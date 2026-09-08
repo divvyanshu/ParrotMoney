@@ -1,0 +1,12 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-parrotmoneyaihom-5ee8fe17-c9cf-40d4-83c0-0d19fa58390d",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "(default)",
+      "rules": "firestore.rules"
+    }
+  ]
+}

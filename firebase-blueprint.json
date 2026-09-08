@@ -1,0 +1,165 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile and role information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "staff", "admin"] },
+        "emailVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email", "role", "createdAt"]
+    },
+    "LoanApplication": {
+      "title": "Loan Application",
+      "description": "Represents a home loan application.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "purpose": { "type": "string", "enum": ["fresh", "refinance"] },
+        "intent": { "type": "string" },
+        "propertyValue": { "type": "number" },
+        "loanAmount": { "type": "number" },
+        "city": { "type": "string" },
+        "propertyCategory": { "type": "string" },
+        "propertyType": { "type": "string" },
+        "authority": { "type": "string" },
+        "occupation": { "type": "string" },
+        "monthlySalary": { "type": "number" },
+        "tenureInOrg": { "type": "string" },
+        "businessType": { "type": "string" },
+        "businessCategory": { "type": "string" },
+        "monthlyRevenue": { "type": "number" },
+        "businessYears": { "type": "number" },
+        "businessName": { "type": "string" },
+        "businessLocation": { "type": "string" },
+        "hasCoBorrower": { "type": "string" },
+        "householdIncome": { "type": "number" },
+        "bankAccount": { "type": "string" },
+        "activeLoans": { "type": "array" },
+        "cibilScore": { "type": "number" },
+        "cibilStatus": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "selectedBank": { "type": "object" },
+        "aiAssessment": { "type": "object" },
+        "rated": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "submitted", "pending_review", "approved", "rejected"] },
+        "documents": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "status", "createdAt", "updatedAt"]
+    },
+    "Document": {
+      "title": "Loan Document",
+      "description": "Metadata for uploaded loan documents.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "loanId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "url": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "loanId", "name", "type", "url", "status", "uploadedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time updates and alerts for users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["milestone", "alert", "info"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "message", "type", "read", "createdAt"]
+    },
+    "LenderRating": {
+      "title": "Lender Rating",
+      "description": "User feedback and rating for a lender after a loan process.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "lenderName": { "type": "string" },
+        "userId": { "type": "string" },
+        "loanId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lenderName", "userId", "loanId", "rating", "createdAt"]
+    },
+    "Bank": {
+      "title": "Bank Offer",
+      "description": "Represents a lending partner bank with interest rates and features.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "rate": { "type": "string" },
+        "features": { "type": "array" },
+        "processingTime": { "type": "string" },
+        "rating": { "type": "number" },
+        "score": { "type": "number" }
+      },
+      "required": ["name", "rate", "processingTime", "rating", "score"]
+    },
+    "Lead": {
+      "title": "Customer Lead",
+      "description": "Stores customer contact information and advisory chat intent.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "name": { "type": "string" },
+        "source": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "phone", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Customer contact leads initiated via the advisory agent."
+    },
+    "/banks/{bankId}": {
+      "schema": "Bank",
+      "description": "Partner bank rates and specifications."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and RBAC."
+    },
+    "/loans/{loanId}": {
+      "schema": "LoanApplication",
+      "description": "Mortgage applications."
+    },
+    "/loans/{loanId}/documents/{docId}": {
+      "schema": "Document",
+      "description": "Supporting documents for a loan application."
+    },
+    "/users/{userId}/notifications/{notifId}": {
+      "schema": "Notification",
+      "description": "User specific notifications."
+    },
+    "/lenderRatings/{ratingId}": {
+      "schema": "LenderRating",
+      "description": "Ratings provided by users for lenders."
+    }
+  }
+}

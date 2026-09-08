@@ -1,0 +1,11 @@
+202-              <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+203-                 <div className="overflow-x-auto">
+204-                    <table className="w-full text-left">
+205-                       <thead>
+206-                          <tr className="border-b border-slate-100">
+207:                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-parrot-green">Lender Type</th>
+208-                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Interest Rate</th>
+209-                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Monthly EMI</th>
+210-                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">20-Year Cost</th>
+211-                          </tr>
+212-                       </thead>

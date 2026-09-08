@@ -1,0 +1,17 @@
+{
+  "name": "ParrotMoney - AI Home Loan Marketplace",
+  "description": "India's smartest AI-driven home loan marketplace. Compare 25+ lenders, get personalized deals with ParrotScore™, and manage your digital loan journey with a dedicated concierge.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
+    "AI Chatbot",
+    "Home Loan Calculators",
+    "Secure Document Management",
+    "Admin Dashboard",
+    "Loan Origination Workflow"
+  ]
+}

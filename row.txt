@@ -1,0 +1,1 @@
+                            { name: "Top Tier Bank", rate: "8.40%", emi: "₹86,150", cost: "₹2.06 Cr", highlight: true },

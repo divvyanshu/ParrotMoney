@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for validating document and parameter lengths and injection attempts
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
+    // Helper to extract incoming values
+    function incoming() { 
+      return request.resource.data; 
+    }
+
+    // Helper to extract existing values
+    function existing() { 
+      return resource.data; 
+    }
+
+    // 1. User Entity Validation helper
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'email', 'role', 'createdAt'])
+        && data.keys().size() <= 6
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.email is string && data.email.size() <= 256
+        && data.role is string && (data.role == 'client' || data.role == 'staff' || data.role == 'admin')
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    // 2. Loan Entity Validation helper
+    function isValidLoan(data) {
+      return data.keys().hasAll(['userId', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 40
+        && data.userId is string && data.userId.size() <= 128
+        && data.status is string && (data.status == 'draft' || data.status == 'submitted' || data.status == 'pending_review' || data.status == 'approved' || data.status == 'rejected')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // 3. Document Entity Validation helper
+    function isValidDocument(data) {
+      return data.keys().hasAll(['id', 'loanId', 'name', 'type', 'url', 'status', 'uploadedAt'])
+        && data.keys().size() <= 10
+        && data.id is string && data.id.size() <= 128
+        && data.loanId is string && data.loanId.size() <= 128
+        && data.name is string && data.name.size() <= 256
+        && data.type is string && data.type.size() <= 100
+        && data.url is string && data.url.size() <= 2048
+        && data.status is string && (data.status == 'pending' || data.status == 'verified' || data.status == 'rejected')
+        && data.uploadedAt is string && data.uploadedAt.size() <= 50;
+    }
+
+    // 4. Notification Entity Validation helper
+    function isValidNotification(data) {
+      return data.keys().hasAll(['id', 'userId', 'message', 'type', 'read', 'createdAt'])
+        && data.keys().size() <= 8
+        && data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.message is string && data.message.size() <= 1000
+        && data.type is string && (data.type == 'milestone' || data.type == 'alert' || data.type == 'info')
+        && data.read is bool
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    // 5. Lender Rating Entity Validation helper
+    function isValidLenderRating(data) {
+      return data.keys().hasAll(['lenderName', 'userId', 'loanId', 'rating', 'createdAt'])
+        && data.keys().size() <= 7
+        && data.lenderName is string && data.lenderName.size() <= 256
+        && data.userId is string && data.userId.size() <= 128
+        && data.loanId is string && data.loanId.size() <= 128
+        && data.rating is number && data.rating >= 1 && data.rating <= 5
+        && data.createdAt is timestamp;
+    }
+
+    // 6. Bank Offer Entity Validation helper
+    function isValidBank(data) {
+      return data.keys().hasAll(['name', 'rate', 'processingTime', 'rating', 'score'])
+        && data.keys().size() <= 8
+        && data.name is string && data.name.size() <= 100
+        && data.rate is string && data.rate.size() <= 20
+        && data.processingTime is string && data.processingTime.size() <= 100
+        && data.rating is number && data.rating >= 0 && data.rating <= 5
+        && data.score is number && data.score >= 0 && data.score <= 100;
+    }
+
+    // 7. Lead Entity Validation helper
+    function isValidLead(data) {
+      return data.keys().hasAll(['email', 'phone', 'createdAt'])
+        && data.keys().size() <= 8
+        && data.email is string && data.email.size() <= 256
+        && data.phone is string && data.phone.size() <= 50
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    // Default catch-all rule: DENY EVERYTHING unless explicitly allowed below
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---- MATCH BLOCKS FOR INDIVIDUAL COLLECTIONS ---- //
+
+    // User collection path matcher
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow create: if isValidId(userId) && isValidUser(incoming()) && incoming().id == userId;
+      allow update: if isValidId(userId) && isValidUser(incoming()) && incoming().id == userId;
+      allow delete: if false; // Profiles cannot be hard-deleted by clients
+
+      // User specific notifications subcollection
+      match /notifications/{notifId} {
+        allow get: if isValidId(userId) && isValidId(notifId);
+        allow list: if isValidId(userId);
+        allow create: if isValidId(userId) && isValidId(notifId) && isValidNotification(incoming()) && incoming().userId == userId;
+        allow update: if isValidId(userId) && isValidId(notifId) && isValidNotification(incoming()) && incoming().userId == userId;
+        allow delete: if isValidId(userId); // Users can clear notifications
+      }
+    }
+
+    // Loans collection path matcher
+    match /loans/{loanId} {
+      allow get: if isValidId(loanId);
+      allow list: if true; // Let the queries onuserId filter, protecting with full type audits on creation
+      allow create: if isValidId(loanId) && isValidLoan(incoming());
+      allow update: if isValidId(loanId) && isValidLoan(incoming());
+      allow delete: if false; // Mortgage applications cannot be arbitrary deleted
+
+      // Documents subcollection nested under loans
+      match /documents/{docId} {
+        allow get: if isValidId(loanId) && isValidId(docId);
+        allow list: if isValidId(loanId);
+        allow create: if isValidId(loanId) && isValidId(docId) && isValidDocument(incoming()) && incoming().loanId == loanId;
+        allow update: if isValidId(loanId) && isValidId(docId) && isValidDocument(incoming()) && incoming().loanId == loanId;
+        allow delete: if isValidId(loanId);
+      }
+    }
+
+    // Lender ratings collection path matcher
+    match /lenderRatings/{ratingId} {
+      allow get: if isValidId(ratingId);
+      allow list: if true;
+      allow create: if isValidId(ratingId) && isValidLenderRating(incoming());
+      allow update: if isValidId(ratingId) && isValidLenderRating(incoming());
+      allow delete: if false;
+    }
+
+    // Partner Banks collection path matcher
+    match /banks/{bankId} {
+      allow get: if isValidId(bankId);
+      allow list: if true;
+      allow create: if isValidId(bankId) && isValidBank(incoming());
+      allow update: if isValidId(bankId) && isValidBank(incoming());
+      allow delete: if isValidId(bankId);
+    }
+
+    // Customer Leads collection path matcher
+    match /leads/{leadId} {
+      allow get, list: if true;
+      allow create: if isValidId(leadId) && isValidLead(incoming());
+      allow update: if isValidId(leadId) && isValidLead(incoming());
+      allow delete: if false;
+    }
+  }
+}
