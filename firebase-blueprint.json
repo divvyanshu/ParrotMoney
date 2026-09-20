@@ -130,9 +130,35 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "phone", "createdAt"]
+    },
+    "MarketCampaign": {
+      "title": "Market Campaign",
+      "description": "Stores scraped lender advertising campaigns and competitor interest rate insights.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "lenderName": { "type": "string" },
+        "campaignTitle": { "type": "string" },
+        "channel": { "type": "string" },
+        "adCopyHeadline": { "type": "string" },
+        "statedRate": { "type": "string" },
+        "processingFeeDiscount": { "type": "string" },
+        "validityStart": { "type": "string" },
+        "validityEnd": { "type": "string" },
+        "targetSegment": { "type": "string" },
+        "finePrint": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "scrapedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      },
+      "required": ["lenderName", "campaignTitle", "channel", "statedRate", "scrapedAt", "status"]
     }
   },
   "firestore": {
+    "/MarketCampaigns/{campaignId}": {
+      "schema": "MarketCampaign",
+      "description": "Scraped financial portal and social media advertisements of active home loan campaigns."
+    },
     "/leads/{leadId}": {
       "schema": "Lead",
       "description": "Customer contact leads initiated via the advisory agent."

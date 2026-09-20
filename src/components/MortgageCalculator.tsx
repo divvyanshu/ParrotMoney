@@ -267,8 +267,8 @@ export function MortgageCalculator({ onApply, isLap = false }: { onApply?: (data
     { id: 'emi', label: 'EMI', icon: Calculator },
     { id: 'eligibility', label: 'Eligibility', icon: UserCheck },
     { id: 'transfer', label: 'Loan Transfer', mobileLabel: 'Transfer', icon: Briefcase },
-    { id: 'prepayment', label: 'Loan Pre-pay', icon: TrendingDown },
-    { id: 'stepup', label: 'Pre-pay', icon: TrendingDown },
+    { id: 'prepayment', label: 'Lump-Sum Pre-pay', mobileLabel: 'Pre-pay', icon: TrendingDown },
+    { id: 'stepup', label: 'Step-Up EMI', mobileLabel: 'Step-Up', icon: TrendingUp },
   ];
 
   return (
@@ -618,7 +618,7 @@ export function MortgageCalculator({ onApply, isLap = false }: { onApply?: (data
 
             {activeTab === 'stepup' && (
               <motion.div key="stepup" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
-                <h3 className="text-lg font-bold text-parrot-navy mb-4">Pre-pay Payment Strategy</h3>
+                <h3 className="text-lg font-bold text-parrot-navy mb-4">Step-Up EMI & Growth Strategy</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -626,7 +626,7 @@ export function MortgageCalculator({ onApply, isLap = false }: { onApply?: (data
                       <InputWithCurrency 
                         value={growthLoan} 
                         onChange={setGrowthLoan} 
-                        placeholder="e.g. 50,0,000"
+                        placeholder="e.g. 50,00,000"
                         className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 ring-parrot-green/20 font-bold text-[13px]"
                       />
                     </div>

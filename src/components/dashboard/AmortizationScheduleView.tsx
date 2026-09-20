@@ -193,6 +193,40 @@ export const AmortizationScheduleView: React.FC<AmortizationScheduleViewProps> =
   const finalRatio = chartData.length > 0 ? chartData[chartData.length - 1].ratio : 0;
   const midPointData = chartData.length > 0 ? chartData[Math.floor(chartData.length / 2)] : null;
 
+  // Mini Area Chart dataset specifically visualizing remaining principal balance reduction over loan tenure
+  const miniPrincipalReductionData = useMemo(() => {
+    const startItem = {
+      period: 0,
+      label: 'Start (Disbursed)',
+      shortLabel: 'Start',
+      remainingBalance: Math.round(principal),
+      principalPaid: 0,
+      repaidPercent: 0,
+    };
+
+    const items = activeSchedule.map((row) => {
+      const remainingBal = Math.max(0, Math.round(row.remainingBalance));
+      const principalPaid = Math.max(0, Math.round(principal - remainingBal));
+      const repaidPercent = Number(Math.min(100, Math.max(0, (principalPaid / principal) * 100)).toFixed(1));
+
+      return {
+        period: row.period,
+        label: row.label,
+        shortLabel: frequency === 'monthly' ? `M${row.period}` : `Yr ${row.period}`,
+        remainingBalance: remainingBal,
+        principalPaid,
+        repaidPercent,
+      };
+    });
+
+    return [startItem, ...items];
+  }, [principal, activeSchedule, frequency]);
+
+  // Milestone period where 50% of the initial principal has been paid off
+  const halfPrincipalPoint = useMemo(() => {
+    return miniPrincipalReductionData.find(item => item.remainingBalance <= principal / 2);
+  }, [miniPrincipalReductionData, principal]);
+
   // Print Amortization Schedule formatted specifically for the loan table
   const handlePrintSchedule = () => {
     try {
@@ -571,16 +605,40 @@ export const AmortizationScheduleView: React.FC<AmortizationScheduleViewProps> =
             </span>
           </div>
 
-          <div className="bg-natural-bg/50 p-4 rounded-2xl border border-natural-border/60 space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-natural-muted block">
-              Principal Loan Amount
-            </span>
-            <p className="text-2xl font-black text-slate-800 tracking-tight">
-              ₹{stats.totalPrincipal.toLocaleString('en-IN')}
-            </p>
-            <span className="text-[10px] text-natural-muted font-medium">
-              100% Disbursed Capital
-            </span>
+          <div className="bg-natural-bg/50 p-4 rounded-2xl border border-natural-border/60 flex flex-col justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-natural-muted block">
+                Principal Loan Amount
+              </span>
+              <p className="text-2xl font-black text-slate-800 tracking-tight">
+                ₹{stats.totalPrincipal.toLocaleString('en-IN')}
+              </p>
+              <span className="text-[10px] text-natural-muted font-medium block">
+                100% Disbursed Capital • {stats.payoffYears} Yrs Payoff
+              </span>
+            </div>
+            {/* Sparkline mini preview */}
+            <div className="h-8 w-full mt-2 pt-0.5" title="Principal balance reduction trajectory">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={miniPrincipalReductionData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="kpiPrincipalSparklineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10B981" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#10B981" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="remainingBalance"
+                    stroke="#10B981"
+                    strokeWidth={1.5}
+                    fill="url(#kpiPrincipalSparklineGrad)"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="bg-natural-bg/50 p-4 rounded-2xl border border-natural-border/60 space-y-1">
@@ -605,6 +663,145 @@ export const AmortizationScheduleView: React.FC<AmortizationScheduleViewProps> =
             <span className="text-[10px] text-indigo-700 font-bold">
               Principal + Total Interest
             </span>
+          </div>
+        </div>
+
+        {/* Mini Recharts Area Chart: Remaining Principal Balance Reduction over Loan Tenure */}
+        <div className="bg-white rounded-3xl border border-natural-border shadow-sm p-5 md:p-6 space-y-4 print:hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-natural-border/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
+                <TrendingDown className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm md:text-base font-black text-natural-sage tracking-tight">
+                    Remaining Principal Balance Reduction
+                  </h4>
+                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-emerald-600" /> Mini Area Chart
+                  </span>
+                  {halfPrincipalPoint && (
+                    <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                      50% Repaid by {halfPrincipalPoint.label}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-natural-muted font-medium mt-0.5">
+                  Visualizes active loan balance declining from ₹{principal.toLocaleString('en-IN')} to ₹0 over the {stats.payoffYears}-year tenure.
+                </p>
+              </div>
+            </div>
+
+            {/* Tenure Milestone Badges */}
+            <div className="flex items-center gap-2.5 sm:gap-3 text-xs font-mono shrink-0">
+              <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-left">
+                <span className="text-[9px] uppercase font-bold text-slate-400 block font-sans tracking-wider">Start Principal</span>
+                <span className="font-black text-slate-800">₹{(principal / 100000).toFixed(1)}L</span>
+              </div>
+              <div className="bg-emerald-50/80 px-3 py-1.5 rounded-xl border border-emerald-200 text-left">
+                <span className="text-[9px] uppercase font-bold text-emerald-700 block font-sans tracking-wider">50% Cleared</span>
+                <span className="font-black text-emerald-800">{halfPrincipalPoint?.label || 'Mid-Tenure'}</span>
+              </div>
+              <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-left">
+                <span className="text-[9px] uppercase font-bold text-slate-400 block font-sans tracking-wider">Debt Free (₹0)</span>
+                <span className="font-black text-slate-900">{stats.payoffYears} Yrs</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mini Recharts Area Chart */}
+          <div className="h-36 w-full pt-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={miniPrincipalReductionData}
+                margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="miniPrincipalBalanceGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#059669" stopOpacity={0.35} />
+                    <stop offset="75%" stopColor="#10B981" stopOpacity={0.08} />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis
+                  dataKey="shortLabel"
+                  tick={{ fill: '#64748B', fontSize: 10 }}
+                  interval={Math.max(1, Math.floor(miniPrincipalReductionData.length / 8))}
+                  axisLine={{ stroke: '#E2E8F0' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  orientation="left"
+                  tick={{ fill: '#059669', fontSize: 10 }}
+                  tickFormatter={(val) => {
+                    if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+                    return `₹${Math.round(val / 100000)}L`;
+                  }}
+                  domain={[0, 'auto']}
+                  axisLine={false}
+                  tickLine={false}
+                  width={42}
+                />
+                <Tooltip
+                  content={({ active, payload }: any) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0]?.payload;
+                      if (!data) return null;
+                      return (
+                        <div className="bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 min-w-[210px] pointer-events-none">
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-1">
+                            <span className="font-bold text-emerald-400">{data.label}</span>
+                            <span className="font-mono text-[10px] text-slate-400">{data.repaidPercent}% Paid</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-300 font-sans">Remaining Balance:</span>
+                            <span className="font-bold text-white">₹{data.remainingBalance.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-400 font-sans">Principal Repaid:</span>
+                            <span className="font-semibold text-emerald-300">₹{data.principalPaid.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div
+                              className="bg-emerald-500 h-full rounded-full transition-all duration-200"
+                              style={{ width: `${data.repaidPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                {halfPrincipalPoint && (
+                  <ReferenceLine
+                    x={halfPrincipalPoint.shortLabel}
+                    stroke="#10B981"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: '50% Balance Paid',
+                      position: 'top',
+                      fill: '#047857',
+                      fontSize: 9,
+                      fontWeight: 700
+                    }}
+                  />
+                )}
+                <Area
+                  type="monotone"
+                  dataKey="remainingBalance"
+                  name="Remaining Principal"
+                  stroke="#059669"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#miniPrincipalBalanceGrad)"
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#059669', stroke: '#FFFFFF', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

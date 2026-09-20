@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
+import { AnimatedStatusBadge } from './AnimatedStatusBadge';
 
 interface LoanJourneyCardProps {
   currentStageId: LoanStageId;
@@ -59,12 +60,21 @@ export const LoanJourneyCard: React.FC<LoanJourneyCardProps> = ({
   return (
     <div className="bg-white rounded-3xl border border-stone-200 shadow-sm p-5 md:p-7 space-y-6">
       {/* Top Header Label */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h3 className="text-xs font-black uppercase tracking-widest text-stone-600">
-            3-Phase Journey Roadmap
-          </h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <h3 className="text-xs font-black uppercase tracking-widest text-stone-600">
+              3-Phase Journey Roadmap
+            </h3>
+          </div>
+          {loan.status && (
+            <AnimatedStatusBadge 
+              status={loan.status} 
+              allowQuickToggle={false} 
+              className="scale-95" 
+            />
+          )}
         </div>
         <div className="text-xs text-stone-500 flex items-center gap-2">
           <span>Overall Progress:</span>

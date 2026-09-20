@@ -97,6 +97,29 @@ export const OffersComparisonChart: React.FC<OffersComparisonChartProps> = ({
     }));
   }, [selectedBanks, loanAmount, tenureYears]);
 
+  // Two-offer direct comparison for pairwise differential
+  const twoOfferDiff = useMemo(() => {
+    if (comparisonData.length !== 2) return null;
+    const bankA = comparisonData[0];
+    const bankB = comparisonData[1];
+    const interestDiff = Math.abs(bankA.totalInterest - bankB.totalInterest);
+    const emiDiff = Math.abs(bankA.emi - bankB.emi);
+    const cheaper = bankA.totalInterest <= bankB.totalInterest ? bankA : bankB;
+    const costlier = bankA.totalInterest > bankB.totalInterest ? bankA : bankB;
+    const percentSaved = costlier.totalInterest > 0
+      ? ((interestDiff / costlier.totalInterest) * 100).toFixed(1)
+      : '0.0';
+
+    return {
+      interestDiff,
+      emiDiff,
+      cheaper,
+      costlier,
+      percentSaved,
+      isSameRate: bankA.rateNum === bankB.rateNum
+    };
+  }, [comparisonData]);
+
   // Summary statistics
   const bestOffer = useMemo(() => {
     if (comparisonData.length === 0) return null;
@@ -174,7 +197,46 @@ export const OffersComparisonChart: React.FC<OffersComparisonChartProps> = ({
       </div>
 
       {/* Highlights Banner if there are savings */}
-      {maxSavings > 0 && bestOffer && (
+      {twoOfferDiff ? (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-3xl p-6 shadow-lg shadow-emerald-600/20 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1.5 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-wider">
+                Full Tenure Interest Difference
+              </span>
+              <span className="text-xs text-emerald-100 font-bold">
+                {tenureYears} Years ({tenureYears * 12} Installments) on ₹{(loanAmount / 100000).toFixed(1)}L
+              </span>
+            </div>
+            <h4 className="text-2xl md:text-3xl font-black tracking-tight flex items-center justify-center md:justify-start gap-2">
+              {twoOfferDiff.isSameRate ? (
+                <span>Identical Interest Rates ({twoOfferDiff.cheaper.rateStr})</span>
+              ) : (
+                <span>Total Interest Difference: {formatCurrency(twoOfferDiff.interestDiff)}</span>
+              )}
+            </h4>
+            <p className="text-xs text-emerald-100/95 font-medium max-w-xl leading-relaxed">
+              {twoOfferDiff.isSameRate ? (
+                <>Both <strong>{twoOfferDiff.cheaper.name}</strong> and <strong>{twoOfferDiff.costlier.name}</strong> offer the same {twoOfferDiff.cheaper.rateStr} rate. Monthly EMI is ₹{twoOfferDiff.cheaper.emi.toLocaleString('en-IN')}/mo.</>
+              ) : (
+                <>Choosing <strong>{twoOfferDiff.cheaper.name}</strong> ({twoOfferDiff.cheaper.rateStr}) over <strong>{twoOfferDiff.costlier.name}</strong> ({twoOfferDiff.costlier.rateStr}) saves <strong>{formatCurrency(twoOfferDiff.interestDiff)}</strong> in total interest payable ({twoOfferDiff.percentSaved}% less interest) and drops monthly EMI by <strong>₹{twoOfferDiff.emiDiff.toLocaleString('en-IN')}/mo</strong>.</>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            {onSelectBank && (
+              <button
+                onClick={() => onSelectBank(twoOfferDiff.cheaper.bank)}
+                className="px-6 py-3.5 bg-white text-emerald-800 hover:bg-emerald-50 rounded-2xl text-xs font-black uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer border-none"
+              >
+                <span>Select {twoOfferDiff.cheaper.name}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      ) : maxSavings > 0 && bestOffer ? (
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-3xl p-6 shadow-lg shadow-emerald-600/20 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-1.5 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2">
@@ -205,7 +267,7 @@ export const OffersComparisonChart: React.FC<OffersComparisonChartProps> = ({
             )}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Interactive Simulation Sliders */}
       <div className="bg-natural-bg/40 rounded-3xl p-5 md:p-6 border border-natural-border/60 space-y-4">
@@ -475,7 +537,26 @@ export const OffersComparisonChart: React.FC<OffersComparisonChartProps> = ({
                 </div>
               </div>
 
-              {item.interestSavingsVsHighest > 0 ? (
+              {twoOfferDiff ? (
+                twoOfferDiff.isSameRate ? (
+                  <div className="p-2.5 bg-slate-100/70 rounded-xl border border-slate-200 text-xs text-slate-600 font-bold flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Interest Spread:</span>
+                    <span className="text-slate-700">Identical ROI</span>
+                  </div>
+                ) : twoOfferDiff.cheaper.name === item.name ? (
+                  <div className="p-2.5 bg-emerald-100/80 rounded-xl border border-emerald-300 text-xs text-emerald-950 font-bold flex items-center justify-between shadow-2xs">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Saves Interest:
+                    </span>
+                    <span className="font-black text-emerald-900">-{formatCurrency(twoOfferDiff.interestDiff)} ({twoOfferDiff.percentSaved}%)</span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 font-bold flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase">Interest Diff:</span>
+                    <span className="font-black text-amber-800">+{formatCurrency(twoOfferDiff.interestDiff)} Extra</span>
+                  </div>
+                )
+              ) : item.interestSavingsVsHighest > 0 ? (
                 <div className="p-2.5 bg-emerald-100/70 rounded-xl border border-emerald-200 text-xs text-emerald-950 font-bold flex items-center justify-between">
                   <span className="text-[10px] font-bold text-emerald-800 uppercase">You Save:</span>
                   <span className="font-black text-emerald-900">+{formatCurrency(item.interestSavingsVsHighest)}</span>

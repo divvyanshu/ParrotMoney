@@ -180,5 +180,32 @@ export interface LoanQuery {
   resolutionNote?: string;
 }
 
+export interface AlgorithmParams {
+  cibilThreshold: number;
+  cibilPenalty: number;
+  maxAgeLimit: number;
+  agePenalty: number;
+  maxLtvRatio: number;
+  maxFoirRatio: number;
+  coBorrowerMultiplier: number;
+  salaryMatchBonus: number;
+}
+
+export interface RuleChangeHistoryEntry {
+  id: string;
+  version: string;
+  timestamp: string;
+  author: string;
+  reason: string;
+  presetApplied?: string;
+  params: AlgorithmParams;
+  changesSummary: {
+    field: keyof AlgorithmParams;
+    label: string;
+    from: number;
+    to: number;
+  }[];
+}
+
 
 

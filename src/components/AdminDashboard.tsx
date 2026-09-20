@@ -7,13 +7,18 @@ import {
   TrendingUp, Shield, HelpCircle, Megaphone, BookOpen, 
   AlertCircle, CheckCircle2, Phone, Mail, Calendar, 
   IndianRupee, ChevronDown, ChevronRight, LogOut, 
-  SlidersHorizontal, BarChart3, Database, Save, RotateCcw
+  SlidersHorizontal, BarChart3, Database, Save, RotateCcw,
+  FlaskConical, Brain, History
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { UserProfile, LoanApplication, UserRole, LoanStatus, Article, BankOffer, FAQItem } from '../types';
+import { UserProfile, LoanApplication, UserRole, LoanStatus, Article, BankOffer, FAQItem, AlgorithmParams, RuleChangeHistoryEntry } from '../types';
 import { NEWS_ARTICLES as DEFAULT_NEWS_ARTICLES } from './ParrotLanding';
+import { ApplicantSimulator } from './admin/ApplicantSimulator';
+import { AlgorithmHowItWorks } from './admin/AlgorithmHowItWorks';
+import { RuleChangesHistory } from './admin/RuleChangesHistory';
+import { LenderCampaignRadar } from './admin/LenderCampaignRadar';
 
 interface AdminDashboardProps {
   users: UserProfile[];
@@ -85,7 +90,7 @@ export function AdminDashboard({
   onBackToApp
 }: AdminDashboardProps) {
   const { profile, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'loans' | 'content' | 'banks' | 'users' | 'algorithm' | 'integrations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'loans' | 'content' | 'banks' | 'users' | 'algorithm' | 'integrations' | 'campaigns'>('overview');
 
   // --- Leads / Loans Management State ---
   const [loanSearch, setLoanSearch] = useState('');
@@ -149,6 +154,108 @@ export function AdminDashboard({
   const [localParams, setLocalParams] = useState(algorithmParams);
   const [isSavingParams, setIsSavingParams] = useState(false);
   const [presetName, setPresetName] = useState<'standard' | 'aggressive' | 'conservative'>('standard');
+  const [algorithmSubTab, setAlgorithmSubTab] = useState<'parameters' | 'simulator' | 'how_it_works' | 'history'>('parameters');
+
+  // Rule Changes History State
+  const [ruleHistory, setRuleHistory] = useState<RuleChangeHistoryEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('parrot_rule_changes_history');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      // fallback
+    }
+    return [
+      {
+        id: 'rh-1',
+        version: 'v2.4',
+        timestamp: 'Today, 09:15 AM',
+        author: 'divvyanshu@gmail.com (Super Admin)',
+        reason: 'Q3 Policy Calibration: Established 700 CIBIL threshold, 50% FOIR ceiling, and 1.45x co-borrower capacity multiplier.',
+        presetApplied: 'Standard Policy',
+        params: {
+          cibilThreshold: 700,
+          cibilPenalty: 20,
+          maxAgeLimit: 65,
+          agePenalty: 4,
+          maxLtvRatio: 90,
+          maxFoirRatio: 50,
+          coBorrowerMultiplier: 1.45,
+          salaryMatchBonus: 15
+        },
+        changesSummary: [
+          { field: 'cibilThreshold', label: 'CIBIL Floor', from: 680, to: 700 },
+          { field: 'maxFoirRatio', label: 'Max FOIR', from: 55, to: 50 }
+        ]
+      },
+      {
+        id: 'rh-2',
+        version: 'v2.3',
+        timestamp: 'Yesterday, 04:30 PM',
+        author: 'risk_team@parrotmoney.in',
+        reason: 'Festive High-Approval Run: Temporarily elevated maximum FOIR to 65% and expanded LTV ceiling to 95% for prime borrowers.',
+        presetApplied: 'High Approval Preset',
+        params: {
+          cibilThreshold: 650,
+          cibilPenalty: 10,
+          maxAgeLimit: 70,
+          agePenalty: 2,
+          maxLtvRatio: 95,
+          maxFoirRatio: 65,
+          coBorrowerMultiplier: 1.65,
+          salaryMatchBonus: 25
+        },
+        changesSummary: [
+          { field: 'maxFoirRatio', label: 'Max FOIR', from: 45, to: 65 },
+          { field: 'maxLtvRatio', label: 'Max LTV', from: 80, to: 95 },
+          { field: 'cibilThreshold', label: 'CIBIL Floor', from: 750, to: 650 }
+        ]
+      },
+      {
+        id: 'rh-3',
+        version: 'v2.2',
+        timestamp: 'Sept 08, 2026, 11:20 AM',
+        author: 'compliance@parrotmoney.in',
+        reason: 'Strict Reserve Bank Stress Testing: Enforced 45% FOIR cap and 750 CIBIL floor for non-salaried business profiles.',
+        presetApplied: 'Conservative Preset',
+        params: {
+          cibilThreshold: 750,
+          cibilPenalty: 35,
+          maxAgeLimit: 60,
+          agePenalty: 6,
+          maxLtvRatio: 80,
+          maxFoirRatio: 45,
+          coBorrowerMultiplier: 1.25,
+          salaryMatchBonus: 10
+        },
+        changesSummary: [
+          { field: 'cibilThreshold', label: 'CIBIL Floor', from: 700, to: 750 },
+          { field: 'maxFoirRatio', label: 'Max FOIR', from: 50, to: 45 },
+          { field: 'maxLtvRatio', label: 'Max LTV', from: 90, to: 80 }
+        ]
+      },
+      {
+        id: 'rh-4',
+        version: 'v2.0',
+        timestamp: 'Aug 15, 2026, 10:00 AM',
+        author: 'system_init@parrotmoney.in',
+        reason: 'Platform Launch Initial Underwriting Ruleset based on RBI Master Circular 2024-25.',
+        presetApplied: 'Initial Baseline',
+        params: {
+          cibilThreshold: 700,
+          cibilPenalty: 20,
+          maxAgeLimit: 65,
+          agePenalty: 4,
+          maxLtvRatio: 90,
+          maxFoirRatio: 50,
+          coBorrowerMultiplier: 1.45,
+          salaryMatchBonus: 15
+        },
+        changesSummary: []
+      }
+    ];
+  });
 
   useEffect(() => {
     if (algorithmParams) {
@@ -203,12 +310,71 @@ export function AdminDashboard({
     setIsSavingParams(true);
     try {
       await onSaveAlgorithmParams(localParams);
+
+      // Compute diffs for audit trail
+      const diffs: any[] = [];
+      const previousParams = ruleHistory[0]?.params || algorithmParams;
+      (Object.keys(localParams) as (keyof AlgorithmParams)[]).forEach((k) => {
+        if (localParams[k] !== previousParams[k]) {
+          diffs.push({
+            field: k,
+            label: k,
+            from: previousParams[k],
+            to: localParams[k]
+          });
+        }
+      });
+
+      const nextVersionNum = (parseFloat(ruleHistory[0]?.version?.replace('v', '') || '2.4') + 0.1).toFixed(1);
+      const newEntry: RuleChangeHistoryEntry = {
+        id: `rh-${Date.now()}`,
+        version: `v${nextVersionNum}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        author: profile?.email || 'divvyanshu@gmail.com (Super Admin)',
+        reason: diffs.length > 0 ? `Recalibrated parameters: Updated ${diffs.map(d => d.field).join(', ')}.` : 'Parameters republished and synced across system.',
+        presetApplied: presetName ? `${presetName.charAt(0).toUpperCase() + presetName.slice(1)} Mode` : 'Custom Calibration',
+        params: { ...localParams },
+        changesSummary: diffs
+      };
+
+      const updatedHistory = [newEntry, ...ruleHistory];
+      setRuleHistory(updatedHistory);
+      localStorage.setItem('parrot_rule_changes_history', JSON.stringify(updatedHistory));
+
       alert("Algorithms and credit decision rules successfully synced across platform!");
     } catch (err) {
       console.error(err);
       alert("Parameters saved locally.");
     } finally {
       setIsSavingParams(false);
+    }
+  };
+
+  const handleRestoreVersion = async (params: AlgorithmParams, version: string) => {
+    setLocalParams(params);
+    try {
+      await onSaveAlgorithmParams(params);
+
+      const nextVersionNum = (parseFloat(ruleHistory[0]?.version?.replace('v', '') || '2.4') + 0.1).toFixed(1);
+      const rollbackEntry: RuleChangeHistoryEntry = {
+        id: `rh-${Date.now()}`,
+        version: `v${nextVersionNum}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        author: profile?.email || 'divvyanshu@gmail.com (Super Admin)',
+        reason: `Rolled back underwriting rules to baseline configuration of ${version}.`,
+        presetApplied: `Rollback to ${version}`,
+        params: { ...params },
+        changesSummary: []
+      };
+
+      const updatedHistory = [rollbackEntry, ...ruleHistory];
+      setRuleHistory(updatedHistory);
+      localStorage.setItem('parrot_rule_changes_history', JSON.stringify(updatedHistory));
+
+      alert(`Successfully restored underwriting rules to version ${version}!`);
+    } catch (err) {
+      console.error(err);
+      alert("Version restored locally.");
     }
   };
 
@@ -469,6 +635,7 @@ export function AdminDashboard({
           { id: 'banks', label: `Lender Feeds (${banks.length})`, icon: Building2 },
           { id: 'users', label: `User Roles (${users.length})`, icon: Users },
           { id: 'algorithm', label: 'Credit Algorithm', icon: SlidersHorizontal },
+          { id: 'campaigns', label: 'Market Campaigns', icon: Megaphone },
           { id: 'integrations', label: 'Cloud Sync', icon: Database },
         ].map((tab) => (
           <button
@@ -1154,142 +1321,244 @@ export function AdminDashboard({
       {/* TAB CONTENT: 6. CREDIT ALGORITHM & RULES ENGINE */}
       {activeTab === 'algorithm' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <h3 className="text-2xl font-bold text-natural-sage">Algorithmic Scoring Engine</h3>
+              <h3 className="text-2xl font-bold text-natural-sage">Algorithmic Scoring & Policy Studio</h3>
               <p className="text-xs text-natural-muted font-medium">
-                Calibrate dynamic debt-to-income limits, credit score penalties, and risk thresholds in real-time
+                Calibrate risk parameters, simulate borrower underwriting in real-time, inspect math formulas, and audit rule revision history.
               </p>
             </div>
 
-            {/* Quick Presets */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
-              <span className="text-[10px] font-black uppercase tracking-wider text-natural-muted px-2">Preset:</span>
+            {/* Sub-tabs bar */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto">
               <button
                 type="button"
-                onClick={() => handleApplyPreset('conservative')}
-                className={cn("px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-pointer", presetName === 'conservative' ? "bg-white text-natural-sage shadow-sm" : "text-natural-muted")}
+                onClick={() => setAlgorithmSubTab('parameters')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none whitespace-nowrap",
+                  algorithmSubTab === 'parameters' 
+                    ? "bg-white text-natural-sage shadow-sm" 
+                    : "text-natural-muted hover:text-natural-sage"
+                )}
               >
-                Strict
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Calibrate Rules
               </button>
+
               <button
                 type="button"
-                onClick={() => handleApplyPreset('standard')}
-                className={cn("px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-pointer", presetName === 'standard' ? "bg-white text-natural-sage shadow-sm" : "text-natural-muted")}
+                onClick={() => setAlgorithmSubTab('simulator')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none whitespace-nowrap",
+                  algorithmSubTab === 'simulator' 
+                    ? "bg-emerald-600 text-white shadow-sm" 
+                    : "text-natural-muted hover:text-natural-sage"
+                )}
               >
-                Standard
+                <FlaskConical className="w-3.5 h-3.5" />
+                Simulate Applicant
               </button>
+
               <button
                 type="button"
-                onClick={() => handleApplyPreset('aggressive')}
-                className={cn("px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-pointer", presetName === 'aggressive' ? "bg-white text-natural-sage shadow-sm" : "text-natural-muted")}
+                onClick={() => setAlgorithmSubTab('how_it_works')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none whitespace-nowrap",
+                  algorithmSubTab === 'how_it_works' 
+                    ? "bg-indigo-600 text-white shadow-sm" 
+                    : "text-natural-muted hover:text-natural-sage"
+                )}
               >
-                High Approval
+                <Brain className="w-3.5 h-3.5" />
+                How It Works
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAlgorithmSubTab('history')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-none whitespace-nowrap",
+                  algorithmSubTab === 'history' 
+                    ? "bg-slate-900 text-white shadow-sm" 
+                    : "text-natural-muted hover:text-natural-sage"
+                )}
+              >
+                <History className="w-3.5 h-3.5" />
+                Rule Changes History ({ruleHistory.length})
               </button>
             </div>
           </div>
 
-          <form onSubmit={handleSaveParams} className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-natural-border shadow-xl space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">CIBIL Threshold Score</label>
-                <input
-                  type="number"
-                  value={localParams.cibilThreshold}
-                  onChange={(e) => handleParamChange('cibilThreshold', Number(e.target.value))}
-                  min="300"
-                  max="900"
-                  className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-natural-muted font-medium">Scores below this trigger risk deductions.</p>
+          {/* SUB-VIEW 1: CALIBRATE RULES & PUBLISH */}
+          {algorithmSubTab === 'parameters' && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* Quick Presets Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-natural-border shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-natural-muted">Risk Profile Presets:</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('conservative')}
+                      className={cn("px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-pointer transition-all", presetName === 'conservative' ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200")}
+                    >
+                      Conservative (Strict)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('standard')}
+                      className={cn("px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-pointer transition-all", presetName === 'standard' ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200")}
+                    >
+                      Standard (RBI Baseline)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('aggressive')}
+                      className={cn("px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-none cursor-pointer transition-all", presetName === 'aggressive' ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200")}
+                    >
+                      High Approval (Festive)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-500 font-mono">
+                  Current Version: <strong className="text-slate-900">{ruleHistory[0]?.version || 'v2.4'}</strong>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">CIBIL Penalty Points</label>
-                <input
-                  type="number"
-                  value={localParams.cibilPenalty}
-                  onChange={(e) => handleParamChange('cibilPenalty', Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-natural-muted font-medium">Points deducted from match probability score.</p>
-              </div>
+              <form onSubmit={handleSaveParams} className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-natural-border shadow-xl space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">CIBIL Threshold Score</label>
+                    <input
+                      type="number"
+                      value={localParams.cibilThreshold}
+                      onChange={(e) => handleParamChange('cibilThreshold', Number(e.target.value))}
+                      min="300"
+                      max="900"
+                      className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-natural-muted font-medium">Scores below this trigger risk deductions.</p>
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Max LTV Ratio % (Loan to Value)</label>
-                <input
-                  type="number"
-                  value={localParams.maxLtvRatio}
-                  onChange={(e) => handleParamChange('maxLtvRatio', Number(e.target.value))}
-                  min="50"
-                  max="100"
-                  className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-natural-muted font-medium">Maximum property financing percentage allowed.</p>
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">CIBIL Penalty Points</label>
+                    <input
+                      type="number"
+                      value={localParams.cibilPenalty}
+                      onChange={(e) => handleParamChange('cibilPenalty', Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-natural-muted font-medium">Points deducted from match probability score.</p>
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Max FOIR Ratio % (Debt-to-Income)</label>
-                <input
-                  type="number"
-                  value={localParams.maxFoirRatio}
-                  onChange={(e) => handleParamChange('maxFoirRatio', Number(e.target.value))}
-                  min="30"
-                  max="80"
-                  className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-natural-muted font-medium">Portion of net income permitted for total EMIs.</p>
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Max LTV Ratio % (Loan to Value)</label>
+                    <input
+                      type="number"
+                      value={localParams.maxLtvRatio}
+                      onChange={(e) => handleParamChange('maxLtvRatio', Number(e.target.value))}
+                      min="50"
+                      max="100"
+                      className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-natural-muted font-medium">Maximum property financing percentage allowed.</p>
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Co-borrower Capacity Multiplier</label>
-                <input
-                  type="number"
-                  step="0.05"
-                  value={localParams.coBorrowerMultiplier}
-                  onChange={(e) => handleParamChange('coBorrowerMultiplier', Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-natural-muted font-medium">Combined eligibility lift factor (default: 1.45x).</p>
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Max FOIR Ratio % (Debt-to-Income)</label>
+                    <input
+                      type="number"
+                      value={localParams.maxFoirRatio}
+                      onChange={(e) => handleParamChange('maxFoirRatio', Number(e.target.value))}
+                      min="30"
+                      max="80"
+                      className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-natural-muted font-medium">Portion of net income permitted for total EMIs.</p>
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Salary Account Affinity Bonus</label>
-                <input
-                  type="number"
-                  value={localParams.salaryMatchBonus}
-                  onChange={(e) => handleParamChange('salaryMatchBonus', Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-natural-muted font-medium">Match score boost if salary is banked with lender.</p>
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Co-borrower Capacity Multiplier</label>
+                    <input
+                      type="number"
+                      step="0.05"
+                      value={localParams.coBorrowerMultiplier}
+                      onChange={(e) => handleParamChange('coBorrowerMultiplier', Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-natural-muted font-medium">Combined eligibility lift factor (default: 1.45x).</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">Salary Account Affinity Bonus</label>
+                    <input
+                      type="number"
+                      value={localParams.salaryMatchBonus}
+                      onChange={(e) => handleParamChange('salaryMatchBonus', Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-natural-muted font-medium">Match score boost if salary is banked with lender.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('standard')}
+                      className="px-5 py-3 border border-natural-border text-natural-muted text-xs font-black uppercase tracking-wider rounded-xl hover:bg-slate-50 cursor-pointer bg-white"
+                    >
+                      Reset to Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAlgorithmSubTab('simulator')}
+                      className="px-5 py-3 bg-emerald-50 text-emerald-800 text-xs font-black uppercase tracking-wider rounded-xl hover:bg-emerald-100 cursor-pointer border border-emerald-200 flex items-center gap-1.5"
+                    >
+                      <FlaskConical className="w-3.5 h-3.5" />
+                      Test in Simulator
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSavingParams}
+                    className="w-full sm:w-auto px-8 py-3 bg-natural-sage hover:bg-natural-sage/90 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-natural-sage/20 flex items-center justify-center gap-2 cursor-pointer border-none"
+                  >
+                    {isSavingParams ? 'Applying Parameters...' : 'Save Algorithm & Publish Rules'}
+                  </button>
+                </div>
+              </form>
             </div>
+          )}
 
-            <div className="flex items-center justify-between pt-6 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => handleApplyPreset('standard')}
-                className="px-5 py-3 border border-natural-border text-natural-muted text-xs font-black uppercase tracking-wider rounded-xl hover:bg-slate-50 cursor-pointer bg-white"
-              >
-                Reset to Standard Defaults
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingParams}
-                className="px-8 py-3 bg-natural-sage hover:bg-natural-sage/90 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-natural-sage/20 flex items-center gap-2 cursor-pointer border-none"
-              >
-                {isSavingParams ? 'Applying Parameters...' : 'Save Algorithm & Publish Rules'}
-              </button>
-            </div>
-          </form>
+          {/* SUB-VIEW 2: SIMULATE APPLICANT */}
+          {algorithmSubTab === 'simulator' && (
+            <ApplicantSimulator algorithmParams={localParams} />
+          )}
+
+          {/* SUB-VIEW 3: HOW IT WORKS & ARCHITECTURE */}
+          {algorithmSubTab === 'how_it_works' && (
+            <AlgorithmHowItWorks />
+          )}
+
+          {/* SUB-VIEW 4: RULE CHANGES HISTORY & ROLLBACK */}
+          {algorithmSubTab === 'history' && (
+            <RuleChangesHistory 
+              history={ruleHistory} 
+              currentParams={localParams} 
+              onRestoreVersion={handleRestoreVersion} 
+            />
+          )}
         </div>
       )}
+
 
       {/* TAB CONTENT: 7. CLOUD SYNC & INTEGRATIONS */}
       {activeTab === 'integrations' && (
@@ -1334,6 +1603,13 @@ export function AdminDashboard({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: 8. AI AD SCRAPER & DAILY EXCEL */}
+      {activeTab === 'campaigns' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <LenderCampaignRadar />
         </div>
       )}
 

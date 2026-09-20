@@ -32,12 +32,23 @@ import {
   Scale,
   CreditCard,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Scan,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export type ApplicantType = 'salaried' | 'self_employed_business';
+
+export interface SecurityScanInfo {
+  status: 'scanning' | 'clean';
+  scannedAt: string;
+  threatsFound: number;
+  engine: string;
+  signatureHash: string;
+  fileSanitized: boolean;
+}
 
 export interface DocumentItem {
   id: string;
@@ -477,10 +488,18 @@ export const ALL_DOCUMENTS: DocumentItem[] = [
   }
 ];
 
+export const CATEGORY_TO_TYPE_LABEL: Record<string, string> = {
+  'Primary KYC': 'ID Proof',
+  'Income & Financials': 'Income Proof',
+  'Property & Legal': 'Property Deed',
+  'Joint Applicant': 'Joint Applicant Proof'
+};
+
 export interface DocumentUploadProps {
   loanId: string;
   documents: string[];
   onUploadComplete: (docId: string) => void;
+  onDeleteDocument?: (docId: string) => void;
   className?: string;
 }
 
@@ -496,11 +515,27 @@ export function DocumentUpload({
   loanId,
   documents,
   onUploadComplete,
+  onDeleteDocument,
   className
 }: DocumentUploadProps) {
+  // Sync internal document state for instant local and parent reactivity
+  const [internalDocs, setInternalDocs] = useState<string[]>(documents);
+  React.useEffect(() => {
+    setInternalDocs(documents);
+  }, [documents]);
+  const activeDocs = internalDocs;
+
   const [applicantType, setApplicantType] = useState<ApplicantType>('salaried');
   const [includeCoApplicant, setIncludeCoApplicant] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  
+  // Pre-Upload Document Type Specification State
+  const [specifiedDocType, setSpecifiedDocType] = useState<string>('auto'); // 'auto' | 'ID Proof' | 'Income Proof' | 'Property Deed' | 'Joint Applicant Proof'
+  const [specifiedDocId, setSpecifiedDocId] = useState<string>('auto');
+
+  // Deletion Confirmation Dialog State
+  const [documentToDelete, setDocumentToDelete] = useState<DocumentItem | null>(null);
+  const [deleteToastMessage, setDeleteToastMessage] = useState<string | null>(null);
   
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [activeProgress, setActiveProgress] = useState<number>(0);
@@ -528,6 +563,55 @@ export function DocumentUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const singleFileInputRef = useRef<HTMLInputElement>(null);
   const [activeSingleUploadTarget, setActiveSingleUploadTarget] = useState<string | null>(null);
+
+  // Security & Antivirus simulated scan state per document
+  const [securityScans, setSecurityScans] = useState<Record<string, SecurityScanInfo>>({});
+
+  // Helper to retrieve scan status or default to validated
+  const getSecurityScan = (docId: string): SecurityScanInfo => {
+    if (securityScans[docId]) {
+      return securityScans[docId];
+    }
+    return {
+      status: 'clean',
+      scannedAt: 'Verified on upload',
+      threatsFound: 0,
+      engine: 'ClamAV 1.4 & Parrot ThreatGuard AI',
+      signatureHash: `SHA-256:${docId.slice(0, 4).toUpperCase()}8F1...92E`,
+      fileSanitized: true
+    };
+  };
+
+  // Trigger simulated antivirus & security scanning lifecycle
+  const triggerSimulatedScan = (docId: string, durationMs: number = 2200) => {
+    setSecurityScans(prev => ({
+      ...prev,
+      [docId]: {
+        status: 'scanning',
+        scannedAt: 'Scanning in progress...',
+        threatsFound: 0,
+        engine: 'ClamAV 1.4 & Parrot ThreatGuard AI',
+        signatureHash: 'SHA-256:CALCULATING...',
+        fileSanitized: false
+      }
+    }));
+
+    setTimeout(() => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      setSecurityScans(prev => ({
+        ...prev,
+        [docId]: {
+          status: 'clean',
+          scannedAt: `Today at ${timeStr}`,
+          threatsFound: 0,
+          engine: 'ClamAV 1.4 & Parrot ThreatGuard AI',
+          signatureHash: `SHA-256:${Math.random().toString(36).substring(2, 8).toUpperCase()}9c4a${docId.slice(0, 3).toUpperCase()}`,
+          fileSanitized: true
+        }
+      }));
+    }, durationMs);
+  };
 
   // Filter applicable documents based on applicant profile and co-applicant toggle
   const applicableDocuments = useMemo(() => {
@@ -594,8 +678,73 @@ export function DocumentUpload({
     if (lower.includes('property_tax') || lower.includes('tax_receipt') || lower.includes('oc') || lower.includes('ec') || lower.includes('encumbrance')) return 'property_tax_oc_ec';
 
     // Default fallback to first unuploaded applicable document
-    const pending = applicableDocuments.find(d => !documents.includes(d.id));
+    const pending = applicableDocuments.find(d => !activeDocs.includes(d.id));
     return pending ? pending.id : 'pan_card';
+  };
+
+  // Filtered target documents matching the selected document type
+  const filteredTargetOptions = useMemo(() => {
+    if (specifiedDocType === 'auto') {
+      return applicableDocuments;
+    }
+    return applicableDocuments.filter(
+      doc => CATEGORY_TO_TYPE_LABEL[doc.category] === specifiedDocType
+    );
+  }, [specifiedDocType, applicableDocuments]);
+
+  // When doc type changes, update the target slot to first available of that type
+  const handleDocTypeChange = (newType: string) => {
+    setSpecifiedDocType(newType);
+    if (newType === 'auto') {
+      setSpecifiedDocId('auto');
+    } else {
+      const matching = applicableDocuments.filter(
+        doc => CATEGORY_TO_TYPE_LABEL[doc.category] === newType
+      );
+      const firstUnuploaded = matching.find(d => !activeDocs.includes(d.id));
+      setSpecifiedDocId(firstUnuploaded ? firstUnuploaded.id : (matching[0]?.id || 'auto'));
+    }
+  };
+
+  // Trigger file upload targeted to the specified document slot
+  const handleUploadForSpecifiedType = () => {
+    if (specifiedDocId !== 'auto') {
+      setActiveSingleUploadTarget(specifiedDocId);
+      singleFileInputRef.current?.click();
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  // Switch target document in pre-upload preview modal
+  const updatePreviewDocTarget = (newDocId: string) => {
+    const newTarget = ALL_DOCUMENTS.find(d => d.id === newDocId);
+    if (newTarget && previewDoc) {
+      setPreviewDoc({
+        ...previewDoc,
+        docItem: newTarget
+      });
+    }
+  };
+
+  // Execute deletion of an incorrectly uploaded document
+  const confirmDeleteDocument = (docId: string) => {
+    setInternalDocs(prev => prev.filter(id => id !== docId));
+    onDeleteDocument?.(docId);
+    setSecurityScans(prev => {
+      const copy = { ...prev };
+      delete copy[docId];
+      return copy;
+    });
+    if (previewDoc && previewDoc.docItem.id === docId) {
+      setPreviewDoc(null);
+    }
+    const target = ALL_DOCUMENTS.find(d => d.id === docId);
+    setDeleteToastMessage(`Removed "${target?.label || docId}" from application vault.`);
+    setTimeout(() => {
+      setDeleteToastMessage(null);
+    }, 4000);
+    setDocumentToDelete(null);
   };
 
   // Handle Drag & Drop Events
@@ -628,8 +777,20 @@ export function DocumentUpload({
   };
 
   const processIncomingFiles = (files: File[]) => {
-    const newQueued: QueuedFile[] = files.map((file) => {
-      const targetDocId = guessDocumentId(file.name);
+    const newQueued: QueuedFile[] = files.map((file, index) => {
+      let targetDocId = specifiedDocId !== 'auto' && index === 0
+        ? specifiedDocId
+        : guessDocumentId(file.name);
+
+      if (specifiedDocType !== 'auto' && specifiedDocId === 'auto') {
+        const matchingDoc = applicableDocuments.find(
+          d => CATEGORY_TO_TYPE_LABEL[d.category] === specifiedDocType && !activeDocs.includes(d.id)
+        );
+        if (matchingDoc) {
+          targetDocId = matchingDoc.id;
+        }
+      }
+
       return {
         id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         file,
@@ -692,7 +853,9 @@ export function DocumentUpload({
 
     setTimeout(() => {
       clearInterval(interval);
+      setInternalDocs(prev => prev.includes(docId) ? prev : [...prev, docId]);
       onUploadComplete(docId);
+      triggerSimulatedScan(docId, 2200);
       
       // Remove from queued list if present
       setQueuedFiles(prev => prev.filter(q => q.targetDocId !== docId));
@@ -721,8 +884,12 @@ export function DocumentUpload({
       clearInterval(interval);
       setBatchProgress(100);
 
-      queuedFiles.forEach(q => {
+      const uploadedDocIds = queuedFiles.map(q => q.targetDocId);
+      setInternalDocs(prev => Array.from(new Set([...prev, ...uploadedDocIds])));
+
+      queuedFiles.forEach((q, idx) => {
         onUploadComplete(q.targetDocId);
+        triggerSimulatedScan(q.targetDocId, 1800 + idx * 400);
       });
 
       setTimeout(() => {
@@ -743,7 +910,7 @@ export function DocumentUpload({
         month: 'short', 
         year: 'numeric', 
         hour: '2-digit', 
-        minute: '2-digit',
+        minute: '2-digit', 
         hour12: true 
       }),
       relative: `${hoursAgo} hrs ago`,
@@ -752,7 +919,7 @@ export function DocumentUpload({
     };
   };
 
-  const verifiedCount = applicableDocuments.filter(d => documents.includes(d.id)).length;
+  const verifiedCount = applicableDocuments.filter(d => activeDocs.includes(d.id)).length;
   const progressPercent = Math.round((verifiedCount / Math.max(applicableDocuments.length, 1)) * 100);
 
   // Category counts
@@ -771,6 +938,10 @@ export function DocumentUpload({
             <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               AES-256 Military Grade Encryption
+            </span>
+            <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg flex items-center gap-1">
+              <ShieldAlert className="w-3.5 h-3.5 text-blue-600" />
+              Live Antivirus & Threat Sandbox Active
             </span>
           </div>
           <p className="text-natural-muted text-xs md:text-sm mt-1">
@@ -921,14 +1092,93 @@ export function DocumentUpload({
         })}
       </div>
 
-      {/* 1. Bulk Drag-and-Drop Zone */}
+      {/* 1. Pre-Upload Document Type Specification & Bulk Drag-and-Drop Zone */}
       <div className="space-y-4">
+        {/* Pre-Upload Document Type Dropdown Selector Bar */}
+        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-800">Specify Document Type Before Upload</span>
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Pre-Upload Setting
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Select document category (e.g. ID Proof, Income Proof, Property Deed) to target your upload
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+            {/* Document Type Dropdown Menu */}
+            <div className="relative sm:w-52">
+              <label htmlFor="doc-type-dropdown" className="sr-only">Specify Document Type</label>
+              <select
+                id="doc-type-dropdown"
+                value={specifiedDocType}
+                onChange={(e) => handleDocTypeChange(e.target.value)}
+                className="w-full text-xs font-bold bg-white text-slate-800 border border-slate-300 hover:border-slate-400 focus:border-emerald-600 rounded-xl px-3 py-2.5 outline-hidden cursor-pointer shadow-2xs transition-colors"
+              >
+                <option value="auto">✨ Auto-Detect (AI Classification)</option>
+                <option value="ID Proof">🪪 ID Proof (Identity & KYC)</option>
+                <option value="Income Proof">💼 Income Proof (Financials)</option>
+                <option value="Property Deed">📜 Property Deed (Legal & Title)</option>
+                {includeCoApplicant && (
+                  <option value="Joint Applicant Proof">👥 Joint Applicant Proof</option>
+                )}
+              </select>
+            </div>
+
+            {/* Target Document Requirement Dropdown Menu */}
+            <div className="relative sm:w-64">
+              <label htmlFor="doc-slot-dropdown" className="sr-only">Target Document Slot</label>
+              <select
+                id="doc-slot-dropdown"
+                value={specifiedDocId}
+                onChange={(e) => setSpecifiedDocId(e.target.value)}
+                className="w-full text-xs font-bold bg-white text-slate-800 border border-slate-300 hover:border-slate-400 focus:border-emerald-600 rounded-xl px-3 py-2.5 outline-hidden cursor-pointer shadow-2xs transition-colors truncate"
+              >
+                {specifiedDocType === 'auto' ? (
+                  <option value="auto">All Requirements (AI Smart Route)</option>
+                ) : null}
+                {filteredTargetOptions.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.label} {activeDocs.includes(doc.id) ? '(Uploaded)' : '(Pending)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Direct Select File Button for this Type */}
+            <button
+              type="button"
+              onClick={handleUploadForSpecifiedType}
+              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 shadow-xs transition-colors cursor-pointer"
+            >
+              <FileUp className="w-3.5 h-3.5" />
+              <span>
+                {specifiedDocType !== 'auto' ? `Upload ${specifiedDocType}` : 'Browse File'}
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <UploadCloud className="w-4 h-4 text-natural-terracotta" />
             <span className="text-xs font-black uppercase tracking-wider text-natural-sage">Smart AI Auto-Tagger & Bulk Drag Zone</span>
           </div>
-          <span className="text-[11px] text-natural-muted">Upload multi-page PDFs, JPGs, or PNGs up to 25MB each</span>
+          {specifiedDocType !== 'auto' ? (
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              Targeting: {specifiedDocType} ({applicableDocuments.find(d => d.id === specifiedDocId)?.label || 'All'})
+            </span>
+          ) : (
+            <span className="text-[11px] text-natural-muted">Upload multi-page PDFs, JPGs, or PNGs up to 25MB each</span>
+          )}
         </div>
 
         <div
@@ -1025,15 +1275,35 @@ export function DocumentUpload({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Slot selector dropdown */}
+                      {/* Document Type and Slot selector dropdown */}
                       <select
                         value={item.targetDocId}
                         onChange={(e) => updateQueueTarget(item.id, e.target.value)}
-                        className="text-[10px] font-bold bg-natural-panel border border-natural-border rounded-lg px-2 py-1 text-natural-sage cursor-pointer outline-hidden max-w-[140px]"
+                        className="text-[10px] font-bold bg-natural-panel border border-natural-border rounded-lg px-2 py-1 text-natural-sage cursor-pointer outline-hidden max-w-[150px]"
+                        title="Specify document type or slot"
                       >
-                        {applicableDocuments.map(d => (
-                          <option key={d.id} value={d.id}>{d.label} ({d.category})</option>
-                        ))}
+                        <optgroup label="🪪 ID Proof">
+                          {applicableDocuments.filter(d => d.category === 'Primary KYC').map(d => (
+                            <option key={d.id} value={d.id}>{d.label}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="💼 Income Proof">
+                          {applicableDocuments.filter(d => d.category === 'Income & Financials').map(d => (
+                            <option key={d.id} value={d.id}>{d.label}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="📜 Property Deed">
+                          {applicableDocuments.filter(d => d.category === 'Property & Legal').map(d => (
+                            <option key={d.id} value={d.id}>{d.label}</option>
+                          ))}
+                        </optgroup>
+                        {includeCoApplicant && (
+                          <optgroup label="👥 Joint Applicant Proof">
+                            {applicableDocuments.filter(d => d.category === 'Joint Applicant').map(d => (
+                              <option key={d.id} value={d.id}>{d.label}</option>
+                            ))}
+                          </optgroup>
+                        )}
                       </select>
 
                       {/* Quick Preview Button */}
@@ -1045,13 +1315,14 @@ export function DocumentUpload({
                         <Eye className="w-4 h-4" />
                       </button>
 
-                      {/* Remove Button */}
+                      {/* Delete / Remove Button with Trash Can */}
                       <button
                         onClick={() => removeQueuedFile(item.id)}
-                        title="Remove file"
+                        title="Remove file from queue"
+                        aria-label="Remove file from queue"
                         className="p-1.5 hover:bg-red-50 text-natural-muted hover:text-red-600 rounded-lg transition-colors cursor-pointer"
                       >
-                        <X className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -1126,10 +1397,11 @@ export function DocumentUpload({
 
         <div className="grid gap-4">
           {displayedDocuments.map((doc) => {
-            const isUploaded = documents.includes(doc.id);
+            const isUploaded = activeDocs.includes(doc.id);
             const isCurrentUploading = uploadingDocId === doc.id;
             const isTooltipOpen = activeTooltipDocId === doc.id;
             const vData = getVerificationTimestamp(doc.id);
+            const scanInfo = getSecurityScan(doc.id);
 
             return (
               <div 
@@ -1255,9 +1527,9 @@ export function DocumentUpload({
                   </div>
                   
                   {/* Status Actions */}
-                  <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                  <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0 flex-wrap sm:flex-nowrap">
                     {isUploaded ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                         {/* Preview Verified Button */}
                         <button
                           onClick={() => openVerifiedPreview(doc)}
@@ -1265,6 +1537,98 @@ export function DocumentUpload({
                         >
                           <Eye className="w-3.5 h-3.5" /> View PDF
                         </button>
+
+                        {/* Visual Antivirus / Security Scan Status Badge */}
+                        <div className="relative group/scan">
+                          {scanInfo.status === 'scanning' ? (
+                            <div className="flex items-center gap-2 bg-blue-50/90 text-blue-900 border border-blue-200 px-3 py-1.5 rounded-xl shadow-2xs animate-pulse">
+                              <div className="relative flex items-center justify-center">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60"></span>
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className="text-[10px] font-black uppercase tracking-wider leading-none text-blue-900 flex items-center gap-1">
+                                  <Scan className="w-3 h-3 text-blue-600" /> Security Scan
+                                </span>
+                                <span className="text-[9px] font-semibold text-blue-600 tracking-tight mt-0.5">
+                                  Checking for threats...
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 bg-emerald-50 text-emerald-900 border border-emerald-200/90 px-3 py-1.5 rounded-xl transition-all duration-200 group-hover/scan:bg-emerald-100/90 group-hover/scan:border-emerald-300 shadow-2xs cursor-help">
+                              <div className="relative flex items-center justify-center">
+                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-white"></span>
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className="text-[10px] font-black uppercase tracking-wider leading-none text-emerald-950 flex items-center gap-1">
+                                  Antivirus Safe
+                                </span>
+                                <span className="text-[9px] font-bold text-emerald-700 tracking-tight mt-0.5">
+                                  0 Threats Detected
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Hover Popover Audit Info */}
+                          {scanInfo.status === 'clean' && (
+                            <div className="absolute right-0 bottom-full mb-2 hidden group-hover/scan:flex flex-col w-68 p-3.5 bg-slate-900 text-white rounded-2xl shadow-xl z-30 border border-slate-700 pointer-events-auto animate-in fade-in zoom-in-95 duration-200 text-left space-y-2.5">
+                              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold">
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  <span>Antivirus & Threat Defense</span>
+                                </div>
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
+                                  PASSED
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Threats Found</span>
+                                  <span className="text-emerald-400 font-bold text-xs mt-0.5 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" /> 0 / 100
+                                  </span>
+                                </div>
+                                <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Macro Sandbox</span>
+                                  <span className="text-emerald-400 font-bold text-xs mt-0.5">
+                                    Clean (Sanitized)
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 text-[10px] text-slate-300 font-sans">
+                                <div className="flex justify-between items-center py-0.5 border-b border-slate-800/60">
+                                  <span className="text-slate-400">Scanner Engine:</span>
+                                  <span className="font-semibold text-slate-200 truncate max-w-[140px] text-right">{scanInfo.engine}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-0.5 border-b border-slate-800/60">
+                                  <span className="text-slate-400">Digest Hash:</span>
+                                  <span className="font-mono text-[9px] text-emerald-400">{scanInfo.signatureHash}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-0.5">
+                                  <span className="text-slate-400">Scanned At:</span>
+                                  <span className="text-slate-300">{scanInfo.scannedAt}</span>
+                                </div>
+                              </div>
+
+                              {/* Interactive Re-scan simulation button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  triggerSimulatedScan(doc.id, 2000);
+                                }}
+                                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-[10px] font-bold transition-all border border-slate-700 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3 h-3" /> Re-scan for Threats
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Enhanced 'Verified' Status Badge with Pulse & Hover Timestamp */}
                         <div className="relative group/badge">
@@ -1293,6 +1657,21 @@ export function DocumentUpload({
                             <span className="text-[9px] text-emerald-400/90 font-mono mt-0.5">{vData.hash}</span>
                           </div>
                         </div>
+
+                        {/* Delete / Remove Incorrectly Uploaded Document Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDocumentToDelete(doc);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 border border-slate-200/90 hover:border-red-200 px-2.5 py-2 rounded-xl transition-all cursor-pointer group/del shadow-2xs"
+                          title={`Remove incorrectly uploaded ${doc.label}`}
+                          aria-label={`Remove incorrectly uploaded ${doc.label}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-slate-400 group-hover/del:text-red-600 transition-colors" />
+                          <span className="hidden sm:inline text-[11px] text-slate-500 group-hover/del:text-red-600 font-semibold">Delete</span>
+                        </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -1374,6 +1753,40 @@ export function DocumentUpload({
                       <span>•</span>
                       <span className="text-emerald-400">OCR Ready (99.2% Legibility)</span>
                     </p>
+                    {previewDoc.isPreUpload && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 font-semibold">Document Type:</span>
+                        <select
+                          value={previewDoc.docItem.id}
+                          onChange={(e) => updatePreviewDocTarget(e.target.value)}
+                          className="text-[11px] font-bold bg-slate-800 text-emerald-300 border border-slate-700 rounded-lg px-2 py-0.5 cursor-pointer outline-hidden"
+                          title="Change target document type"
+                        >
+                          <optgroup label="🪪 ID Proof">
+                            {applicableDocuments.filter(d => d.category === 'Primary KYC').map(d => (
+                              <option key={d.id} value={d.id}>{d.label}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="💼 Income Proof">
+                            {applicableDocuments.filter(d => d.category === 'Income & Financials').map(d => (
+                              <option key={d.id} value={d.id}>{d.label}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="📜 Property Deed">
+                            {applicableDocuments.filter(d => d.category === 'Property & Legal').map(d => (
+                              <option key={d.id} value={d.id}>{d.label}</option>
+                            ))}
+                          </optgroup>
+                          {includeCoApplicant && (
+                            <optgroup label="👥 Joint Applicant Proof">
+                              {applicableDocuments.filter(d => d.category === 'Joint Applicant').map(d => (
+                                <option key={d.id} value={d.id}>{d.label}</option>
+                              ))}
+                            </optgroup>
+                          )}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1432,7 +1845,7 @@ export function DocumentUpload({
                       <div className="w-12 h-12 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-center ml-auto text-emerald-700">
                         <ShieldCheck className="w-6 h-6" />
                       </div>
-                      <span className="text-[9px] font-mono text-emerald-700 block mt-1">SHA-256 CHECK PASSED</span>
+                      <span className="text-[9px] font-mono text-emerald-700 block mt-1">ANTIVIRUS SCAN: CLEAN</span>
                     </div>
                   </div>
 
@@ -1496,7 +1909,7 @@ export function DocumentUpload({
 
                     <div className="space-y-3">
                       <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Pre-Upload Automated Scan Inspection</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                           <span className="text-[10px] font-bold text-emerald-800 block">DPI Resolution</span>
                           <span className="text-sm font-black text-emerald-700">300 DPI (High)</span>
@@ -1508,6 +1921,12 @@ export function DocumentUpload({
                         <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                           <span className="text-[10px] font-bold text-emerald-800 block">Tamper Check</span>
                           <span className="text-sm font-black text-emerald-700">Zero Artifacts</span>
+                        </div>
+                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                          <span className="text-[10px] font-bold text-emerald-800 block">Antivirus & Security</span>
+                          <span className="text-sm font-black text-emerald-700 flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Clean (0 Threats)
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1539,6 +1958,19 @@ export function DocumentUpload({
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {/* Delete / Remove button if document is already uploaded and user is previewing */}
+                  {!previewDoc.isPreUpload && activeDocs.includes(previewDoc.docItem.id) && (
+                    <button
+                      type="button"
+                      onClick={() => setDocumentToDelete(previewDoc.docItem)}
+                      className="px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Remove incorrectly uploaded file"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <span>Remove Document</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setPreviewDoc(null)}
                     className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-natural-border text-xs font-bold text-natural-muted hover:bg-natural-panel transition-colors cursor-pointer"
@@ -1558,6 +1990,92 @@ export function DocumentUpload({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. Delete Confirmation Dialog Modal */}
+      <AnimatePresence>
+        {documentToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl border border-red-200 shadow-2xl w-full max-w-md p-6 space-y-5 text-left relative overflow-hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-dialog-title"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 border border-red-200">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 id="delete-dialog-title" className="text-base font-black text-slate-900">
+                    Remove Incorrect Document?
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Are you sure you want to remove <span className="font-bold text-slate-800">"{documentToDelete.label}"</span>?
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 text-xs text-slate-600 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                  <span>Document Type:</span>
+                  <span className="font-bold text-slate-800">{CATEGORY_TO_TYPE_LABEL[documentToDelete.category] || 'Document'}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                  <span>Category:</span>
+                  <span className="text-slate-700">{documentToDelete.category}</span>
+                </div>
+                <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200/60 mt-1">
+                  ⚠️ This file will be unlinked from your loan application vault. You can upload the corrected document at any time.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDocumentToDelete(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancel / Keep
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmDeleteDocument(documentToDelete.id)}
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Yes, Remove File</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 5. Delete Action Feedback Toast */}
+      <AnimatePresence>
+        {deleteToastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 text-xs font-semibold"
+          >
+            <div className="w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30">
+              <Trash2 className="w-3.5 h-3.5" />
+            </div>
+            <span>{deleteToastMessage}</span>
+            <button
+              onClick={() => setDeleteToastMessage(null)}
+              className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer ml-2"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

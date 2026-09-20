@@ -94,6 +94,18 @@ service cloud.firestore {
         && data.createdAt is string && data.createdAt.size() <= 50;
     }
 
+    // 8. Market Campaign Entity Validation helper
+    function isValidMarketCampaign(data) {
+      return data.keys().hasAll(['lenderName', 'campaignTitle', 'channel', 'statedRate', 'scrapedAt', 'status'])
+        && data.keys().size() <= 16
+        && data.lenderName is string && data.lenderName.size() <= 200
+        && data.campaignTitle is string && data.campaignTitle.size() <= 256
+        && data.channel is string && data.channel.size() <= 100
+        && data.statedRate is string && data.statedRate.size() <= 100
+        && data.scrapedAt is string && data.scrapedAt.size() <= 80
+        && data.status is string && data.status.size() <= 50;
+    }
+
     // Default catch-all rule: DENY EVERYTHING unless explicitly allowed below
     match /{document=**} {
       allow read, write: if false;
@@ -161,6 +173,14 @@ service cloud.firestore {
       allow create: if isValidId(leadId) && isValidLead(incoming());
       allow update: if isValidId(leadId) && isValidLead(incoming());
       allow delete: if false;
+    }
+
+    // Market Campaigns collection path matcher (scraped advertisements & interest rate campaigns)
+    match /MarketCampaigns/{campaignId} {
+      allow get, list: if true;
+      allow create: if isValidId(campaignId) && isValidMarketCampaign(incoming());
+      allow update: if isValidId(campaignId) && isValidMarketCampaign(incoming());
+      allow delete: if isValidId(campaignId);
     }
   }
 }

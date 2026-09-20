@@ -14,11 +14,16 @@ import {
   Edit3,
   Check,
   RefreshCw,
-  FileCheck
+  FileCheck,
+  FileSpreadsheet,
+  Download,
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserContext, logCustomerLead } from '../../services/geminiService';
 import { cn } from '../../lib/utils';
+import { LendersGuidelinesModal } from '../LendersGuidelinesModal';
+import { downloadLendersExcel } from '../../utils/excelDownloader';
 
 interface AgenticResearchStatusCardProps {
   onOpenChat?: () => void;
@@ -41,6 +46,7 @@ export function AgenticResearchStatusCard({ onOpenChat, className }: AgenticRese
   const [nameInput, setNameInput] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Synchronize customer changes across tabs or from the chat window
   useEffect(() => {
@@ -162,8 +168,31 @@ export function AgenticResearchStatusCard({ onOpenChat, className }: AgenticRese
           </div>
         </div>
 
-        {/* Status Pill */}
-        <div className="shrink-0">
+        {/* Action Controls & Status Pill */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => downloadLendersExcel()}
+              className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-full text-xs font-semibold transition-all shadow-2xs group cursor-pointer"
+              title="Download comprehensive guidelines for 40+ Banks, SFBs, HFCs & NBFCs in Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-105 transition-transform" />
+              <span>40+ Lenders Guidelines (.xlsx)</span>
+              <Download className="w-3 h-3 text-emerald-600" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-full text-xs font-medium transition-all shadow-2xs cursor-pointer"
+              title="View on-screen directory or alternate download formats"
+            >
+              <Eye className="w-3 h-3 text-slate-500" />
+              <span className="hidden sm:inline">Directory</span>
+            </button>
+          </div>
+
           {customer ? (
             <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50/80 border border-emerald-200/60 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -372,6 +401,11 @@ export function AgenticResearchStatusCard({ onOpenChat, className }: AgenticRese
           </button>
         </div>
       </div>
+
+      <LendersGuidelinesModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 }

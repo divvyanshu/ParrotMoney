@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ChatInterface } from './components/ChatInterface';
 import { MortgageCalculator as HomeLoanCalculator } from './components/MortgageCalculator';
@@ -93,7 +93,8 @@ import {
   Table,
   Compass,
   FolderCheck,
-  Inbox
+  Inbox,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatCurrency } from './lib/utils';
@@ -114,6 +115,20 @@ import { LoanJourneyCard } from './components/dashboard/LoanJourneyCard';
 import { AgenticResearchStatusCard } from './components/dashboard/AgenticResearchStatusCard';
 import { AmortizationScheduleView } from './components/dashboard/AmortizationScheduleView';
 import { OffersComparisonChart } from './components/offers/OffersComparisonChart';
+import { OffersSortingDropdown, OfferSortOption } from './components/offers/OffersSortingDropdown';
+import { OfferComparisonMatrixModal } from './components/offers/OfferComparisonMatrixModal';
+import { LenderPolicyModal } from './components/offers/LenderPolicyModal';
+import { BankLogo } from './components/BankLogo';
+import { LoanMarketSavingsBenchmark } from './components/LoanMarketSavingsBenchmark';
+import { MobileConciergeFab } from './components/dashboard/MobileConciergeFab';
+import { AnimatedStatusBadge } from './components/dashboard/AnimatedStatusBadge';
+import { ContextualTooltip } from './components/common/ContextualTooltip';
+import { 
+  compute43LenderRecommendations, 
+  ALL_INDIAN_LENDERS, 
+  EnrichedLenderOffer, 
+  LenderCategoryGroup 
+} from './services/lenderRecommendationService';
 import { 
   STAGE_CONFIGS, 
   getCommunicationLogs, 
@@ -134,31 +149,32 @@ const INDIAN_CITIES = [
   'Ranchi', 'Howrah', 'Coimbatore', 'Jabalpur', 'Gwalior', 'Vijayawada'
 ].sort();
 
-const INDIAN_BANKS = [
-  'HDFC Bank', 'State Bank of India (SBI)', 'ICICI Bank', 'Axis Bank', 
-  'Kotak Mahindra Bank', 'Punjab National Bank (PNB)', 'Bank of Baroda', 
-  'Canara Bank', 'Union Bank of India', 'IndusInd Bank', 'IDFC First Bank', 
-  'Yes Bank', 'Standard Chartered', 'HSBC Bank', 'Federal Bank', 'South Indian Bank'
-].sort();
+const INDIAN_BANKS = ALL_INDIAN_LENDERS;
 
-function CustomTooltip({ message }: { message: string }) {
-  const [show, setShow] = useState(false);
+function CustomTooltip({ 
+  message, 
+  title, 
+  term,
+  side = 'top',
+  variant = 'subtle',
+  className
+}: { 
+  message: string; 
+  title?: string; 
+  term?: string;
+  side?: 'top' | 'bottom' | 'left' | 'right';
+  variant?: 'subtle' | 'pill' | 'badge';
+  className?: string;
+}) {
   return (
-    <div className="relative inline-block ml-2 group">
-      <div 
-        onMouseEnter={() => setShow(true)} 
-        onMouseLeave={() => setShow(false)}
-        className="w-4 h-4 bg-natural-muted/20 text-natural-muted rounded-full flex items-center justify-center cursor-help transition-all hover:bg-natural-terracotta hover:text-white"
-      >
-        <span className="text-[10px] font-black">?</span>
-      </div>
-      {show && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-natural-sage text-white p-3 rounded-2xl text-[10px] font-medium leading-relaxed shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-1">
-          <p>{message}</p>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-natural-sage" />
-        </div>
-      )}
-    </div>
+    <ContextualTooltip 
+      title={title} 
+      message={message} 
+      term={term} 
+      side={side} 
+      variant={variant}
+      className={className}
+    />
   );
 }
 
@@ -668,6 +684,86 @@ function DashboardView({
   const [selectedStageId, setSelectedStageId] = useState<LoanStageId>(currentStageId);
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
+  // Real-time active user loan status state
+  const [activeLoanStatus, setActiveLoanStatus] = useState<string>(() => {
+    return localStorage.getItem(`parrot_status_${effectiveLoan.id}`) || effectiveLoan.status || 'submitted';
+  });
+
+  // Sync if effectiveLoan.status updates from external props or Firestore
+  useEffect(() => {
+    if (effectiveLoan.status && effectiveLoan.status !== activeLoanStatus) {
+      setActiveLoanStatus(effectiveLoan.status);
+    }
+  }, [effectiveLoan.status]);
+
+  // Toast Notification state for status changes
+  const [statusToast, setStatusToast] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    status: string;
+    previousStatus?: string;
+  } | null>(null);
+
+  // Track previous status to detect real-time status transitions and trigger toast
+  const prevStatusRef = useRef<string>(activeLoanStatus);
+
+  useEffect(() => {
+    if (prevStatusRef.current && prevStatusRef.current !== activeLoanStatus) {
+      const oldStatus = prevStatusRef.current;
+      const newStatus = activeLoanStatus;
+
+      const formatStatusName = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+      setStatusToast({
+        id: `toast-${Date.now()}`,
+        title: `Application Status: ${formatStatusName(newStatus)}`,
+        message: `Loan application #${effectiveLoan.id?.slice(-8).toUpperCase()} has moved from "${formatStatusName(oldStatus)}" to "${formatStatusName(newStatus)}".`,
+        status: newStatus,
+        previousStatus: oldStatus,
+      });
+
+      addCommunicationLog({
+        loanId: effectiveLoan.id,
+        stageId: currentStageId,
+        channel: 'in_app',
+        category: 'stage_update',
+        title: `Status Changed to ${formatStatusName(newStatus)}`,
+        message: `Loan application #${effectiveLoan.id?.slice(-8).toUpperCase()} status was updated to ${formatStatusName(newStatus)}.`,
+        recipient: profile?.email || user?.email || 'divvyanshu@gmail.com'
+      });
+    }
+    prevStatusRef.current = activeLoanStatus;
+  }, [activeLoanStatus, effectiveLoan.id, currentStageId, profile, user]);
+
+  // Auto-dismiss status toast after 5 seconds
+  useEffect(() => {
+    if (!statusToast) return;
+    const timer = setTimeout(() => {
+      setStatusToast(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [statusToast]);
+
+  const handleUpdateLoanStatus = async (newStatus: string) => {
+    setActiveLoanStatus(newStatus);
+    localStorage.setItem(`parrot_status_${effectiveLoan.id}`, newStatus);
+
+    try {
+      if (activeLoan?.id) {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'loans', activeLoan.id), {
+          status: newStatus as any,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch {
+      // Local state fallback
+    }
+
+    refreshData();
+  };
+
   // Communication logs & queries state
   const [logs, setLogs] = useState<CommunicationLogEntry[]>([]);
   const [openQueries, setOpenQueries] = useState<LoanQuery[]>([]);
@@ -709,6 +805,32 @@ function DashboardView({
       category: 'document_request',
       title: `Document Upload Verified: ${docId.replace('_', ' ').toUpperCase()}`,
       message: `📄 *PARROT DOCUMENT UPLOAD SUCCESSFUL*\n\nApplication: *#${effectiveLoan.id?.slice(-8).toUpperCase()}*\nDocument: *${docId.replace('_', ' ').toUpperCase()}*\n\nStatus: *Verified & AES-256 Encrypted*\nYour file has been secured and dispatched to the verification desk.`,
+      recipient: profile?.mobile || '+91 98765 43210'
+    });
+
+    refreshData();
+  };
+
+  const handleDocumentDeleted = (docId: string) => {
+    setLoanDocuments((prev) => {
+      const next = prev.filter((id) => id !== docId);
+      localStorage.setItem(`parrot_docs_${effectiveLoan.id}`, JSON.stringify(next));
+      return next;
+    });
+
+    // Dispatch global event for listeners
+    window.dispatchEvent(new CustomEvent('loan-doc-deleted', {
+      detail: { loanId: effectiveLoan.id, docId }
+    }));
+
+    // Trigger communication log alert for deleted document
+    addCommunicationLog({
+      loanId: effectiveLoan.id,
+      stageId: currentStageId,
+      channel: 'whatsapp',
+      category: 'document_request',
+      title: `Document Removed: ${docId.replace('_', ' ').toUpperCase()}`,
+      message: `🗑️ *DOCUMENT REMOVED FROM APPLICATION*\n\nApplication: *#${effectiveLoan.id?.slice(-8).toUpperCase()}*\nDocument: *${docId.replace('_', ' ').toUpperCase()}*\n\nThe file was removed from your application vault. You may re-upload the correct scan at any time.`,
       recipient: profile?.mobile || '+91 98765 43210'
     });
 
@@ -892,6 +1014,11 @@ function DashboardView({
                   {activeQueriesCount} Action Item
                 </span>
               )}
+              <AnimatedStatusBadge
+                status={activeLoanStatus}
+                onChangeStatus={handleUpdateLoanStatus}
+                allowQuickToggle={true}
+              />
             </div>
             
             <h2 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">
@@ -921,34 +1048,55 @@ function DashboardView({
           </div>
         </div>
 
-        {/* Key Metrics Strip (Clean & Light) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-stone-100 text-xs">
-          <div className="bg-stone-50/80 p-3.5 rounded-2xl border border-stone-200/70">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500 block">Lender Partner</span>
-            <span className="font-extrabold text-stone-900 text-sm truncate block mt-0.5">
+        {/* Key Metrics Strip (Refined, Highly Legible & Touch-Friendly on Mobile) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-stone-100 text-xs">
+          {/* Card 1: Lender Partner */}
+          <div 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-parrot-chat', {
+              detail: { query: `Tell me about my loan terms and institutional benefits with ${effectiveLoan.selectedBank?.name || 'HDFC Bank'}` }
+            }))}
+            className="bg-stone-50/90 hover:bg-emerald-50/50 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-stone-200/70 transition-all cursor-pointer select-none min-h-[72px] sm:min-h-[80px] flex flex-col justify-between active:scale-[0.98] group"
+            title="Tap to ask Concierge about this lender partner"
+          >
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[9.5px] sm:text-[10px] uppercase font-black tracking-wider text-stone-500">Lender Partner</span>
+              <BankLogo bank={effectiveLoan.selectedBank?.name || 'HDFC Bank'} size="xs" showBorder={false} className="w-5 h-5 rounded-md shadow-2xs" />
+            </div>
+            <span className="font-extrabold text-stone-900 text-xs sm:text-sm truncate block mt-0.5 group-hover:text-emerald-800 transition-colors" title={effectiveLoan.selectedBank?.name || 'HDFC Bank'}>
               {effectiveLoan.selectedBank?.name || 'HDFC Bank'}
             </span>
           </div>
 
-          <div className="bg-stone-50/80 p-3.5 rounded-2xl border border-stone-200/70">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500 block">Loan Amount</span>
-            <span className="font-black text-emerald-700 text-sm truncate block mt-0.5">
+          {/* Card 2: Loan Amount */}
+          <div className="bg-stone-50/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-stone-200/70 min-h-[72px] sm:min-h-[80px] flex flex-col justify-between select-none">
+            <span className="text-[9.5px] sm:text-[10px] uppercase font-black tracking-wider text-stone-500 block">Loan Amount</span>
+            <span className="font-black text-emerald-700 text-xs sm:text-sm truncate block mt-0.5">
               ₹{effectiveLoan.loanAmount ? effectiveLoan.loanAmount.toLocaleString('en-IN') : '45,00,000'}
             </span>
           </div>
 
-          <div className="bg-stone-50/80 p-3.5 rounded-2xl border border-stone-200/70">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500 block">Active Milestone</span>
-            <span className="font-extrabold text-stone-900 text-sm truncate block mt-0.5 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              {STAGE_CONFIGS[currentStageId].name}
+          {/* Card 3: Active Milestone */}
+          <div 
+            onClick={() => {
+              const el = document.getElementById('active-loan-stage-details') || document.getElementById('loan-stage-roadmap');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="bg-stone-50/90 hover:bg-stone-100/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-stone-200/70 transition-all cursor-pointer select-none min-h-[72px] sm:min-h-[80px] flex flex-col justify-between active:scale-[0.98]"
+            title="Tap to view active milestone details"
+          >
+            <span className="text-[9.5px] sm:text-[10px] uppercase font-black tracking-wider text-stone-500 block">Active Milestone</span>
+            <span className="font-extrabold text-stone-900 text-[11px] sm:text-xs leading-tight line-clamp-2 mt-0.5 flex items-start gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 mt-0.5" />
+              <span>{STAGE_CONFIGS[currentStageId].name}</span>
             </span>
           </div>
 
-          <div className="bg-stone-50/80 p-3.5 rounded-2xl border border-stone-200/70">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500 block">Est. Completion</span>
-            <span className="font-extrabold text-stone-800 text-sm truncate block mt-0.5">
-              {STAGE_CONFIGS[currentStageId].slaDays} Business Days
+          {/* Card 4: Est. Completion */}
+          <div className="bg-stone-50/90 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-stone-200/70 min-h-[72px] sm:min-h-[80px] flex flex-col justify-between select-none">
+            <span className="text-[9.5px] sm:text-[10px] uppercase font-black tracking-wider text-stone-500 block">Est. Completion</span>
+            <span className="font-extrabold text-stone-800 text-xs sm:text-sm truncate block mt-0.5 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-stone-400 shrink-0" />
+              <span>{STAGE_CONFIGS[currentStageId].slaDays} Business Days</span>
             </span>
           </div>
         </div>
@@ -981,6 +1129,9 @@ function DashboardView({
       <AgenticResearchStatusCard 
         onOpenChat={() => window.dispatchEvent(new CustomEvent('open-parrot-chat'))} 
       />
+
+      {/* 2.5 MARKET RATE BENCHMARK & LIFETIME SAVINGS ELEMENT */}
+      <LoanMarketSavingsBenchmark loan={effectiveLoan} />
 
       {/* 3. THREE-PHASE STORYLINE ROADMAP CARD (Origin -> Active -> Next) */}
       <LoanJourneyCard
@@ -1117,6 +1268,7 @@ function DashboardView({
               loanId={effectiveLoan.id}
               documents={loanDocuments}
               onUploadComplete={handleDocumentUploaded}
+              onDeleteDocument={handleDocumentDeleted}
             />
           </motion.div>
         )}
@@ -1167,6 +1319,58 @@ function DashboardView({
         userEmail={profile?.email || user?.email || 'divvyanshu@gmail.com'}
         userPhone={profile?.mobile || '+91 98765 43210'}
       />
+
+      {/* Floating Action Button for Mobile: Ask Concierge for Current Loan Stage */}
+      <MobileConciergeFab currentStageId={currentStageId} loan={effectiveLoan} />
+
+      {/* Floating Toast Notification for Real-Time Loan Application Status Changes */}
+      <AnimatePresence>
+        {statusToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 35, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 25, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md w-full p-4 rounded-2xl shadow-2xl border bg-slate-900 text-white border-slate-700 flex items-start gap-3.5 pointer-events-auto"
+            role="status"
+            aria-live="polite"
+          >
+            <div className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs",
+              statusToast.status === 'approved' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" :
+              statusToast.status === 'rejected' ? "bg-rose-500/20 text-rose-400 border border-rose-500/40" :
+              statusToast.status === 'pending_review' ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" :
+              "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40"
+            )}>
+              {statusToast.status === 'approved' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> :
+               statusToast.status === 'rejected' ? <AlertCircle className="w-5 h-5 text-rose-400" /> :
+               <Clock className="w-5 h-5 text-amber-400" />}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400 truncate">
+                  {statusToast.title}
+                </h4>
+                <button
+                  onClick={() => setStatusToast(null)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
+                  aria-label="Dismiss notification"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                {statusToast.message}
+              </p>
+              <div className="mt-2.5 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Active User Dashboard Real-Time Alert</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2443,7 +2647,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
   const [activeTab, setActiveTabInternal] = useState<'loans' | 'dashboard' | 'calculator' | 'recommendations' | 'admin' | 'about' | 'settings' | 'calendar' | 'workspace'>(initialTab || 'loans');
   const setActiveTab = (tab: any) => setActiveTabInternal(tab);
   const [selectedCompareBanks, setSelectedCompareBanks] = useState<string[]>([]);
+  const [offersSortBy, setOffersSortBy] = useState<OfferSortOption>('highest_match');
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [selectedCategoryGroup, setSelectedCategoryGroup] = useState<LenderCategoryGroup>('All');
+  const [lenderSearchQuery, setLenderSearchQuery] = useState<string>('');
+  const [policyModalLender, setPolicyModalLender] = useState<EnrichedLenderOffer | null>(null);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState<boolean>(false);
+  const [showAllStep9Offers, setShowAllStep9Offers] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [pendingNotice, setPendingNotice] = useState<string | null>(pendingCategory);
   const [loanStep, setLoanStep] = useState(1);
@@ -3104,7 +3314,6 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
     setGoogleSheetsError(null);
     try {
       const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
-      const { auth } = await import('./lib/firebase');
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/spreadsheets');
       provider.addScope('https://www.googleapis.com/auth/drive.file');
@@ -3179,159 +3388,12 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
     setValidationErrors(prev => ({ ...prev, [field]: error }));
   };
 
-  const getBankRecommendations = () => {
-    const defaultBanks = [
-      { 
-        name: 'SBI', 
-        rate: '8.40%', 
-        features: ['Lowest Rates', 'No Hidden Costs', 'Govt Trust'], 
-        processingTime: '15-20 Days',
-        rating: 4.8,
-        score: 95 
-      },
-      { 
-        name: 'HDFC Bank', 
-        rate: '8.45%', 
-        features: ['Fast Processing', 'Digital Journey', 'Max Tenure'], 
-        processingTime: '7-10 Days',
-        rating: 4.7,
-        score: 92 
-      },
-      { 
-        name: 'ICICI Bank', 
-        rate: '8.50%', 
-        features: ['Pre-approved Offers', 'Easy Top-up', 'Instant App'], 
-        processingTime: '5-8 Days',
-        rating: 4.6,
-        score: 88 
-      },
-      { 
-        name: 'Axis Bank', 
-        rate: '8.55%', 
-        features: ['Flexible Tenure', 'Balance Transfer', 'Gift Schemes'], 
-        processingTime: '10-12 Days',
-        rating: 4.5,
-        score: 82 
-      },
-      { 
-        name: 'LIC Housing', 
-        rate: '8.60%', 
-        features: ['Govt Trust', 'Long Tenure', 'Minimal Docs'], 
-        processingTime: '18-25 Days',
-        rating: 4.3,
-        score: 78 
-      }
-    ];
-
-    const banks = banksList.length > 0 ? banksList : defaultBanks;
-
-    // More complex matching logic
-    return banks.map(b => {
-      let finalScore = b.score;
-      
-      // Calculate dynamic risk-adjusted ROI (loader rates based on Indian bank policies)
-      const baseRateNum = parseFloat(b.rate) || 8.50;
-      let rateLoader = 0;
-      
-      const cibilVal = Number(formData.cibilScore) || 750;
-      
-      // 1. CIBIL loader impact on Interest Rate
-      if (cibilVal < 650) {
-        rateLoader += 1.00; // Severe risk loader
-      } else if (cibilVal >= 650 && cibilVal < 700) {
-        rateLoader += 0.50; // Risk premium loader
-      } else if (cibilVal >= 700 && cibilVal < 750) {
-        rateLoader += 0.15; // Standard minor loader
-      }
-      
-      // 2. Outstanding defaults impact
-      if (formData.cibilStatus === 'Outstanding & Defaults') {
-        rateLoader += 1.50; // Heavy defaults loader
-      }
-
-      // 3. LTV calculation & loader impact
-      const propertyVal = Number(formData.propertyValue) || 1;
-      const loanAmt = Number(formData.loanAmount) || 0;
-      const calculatedLtv = propertyVal > 0 ? (loanAmt / propertyVal) * 100 : 0;
-      if (calculatedLtv > 80) {
-        rateLoader += 0.10; // High LTV premium loader
-      }
-
-      const finalRateNum = baseRateNum + rateLoader;
-      const dynamicRateStr = finalRateNum.toFixed(2) + '%';
-      
-      // 1. CIBIL score penalty for matchmaking confidence
-      if (cibilVal < algorithmParams.cibilThreshold) {
-        finalScore -= algorithmParams.cibilPenalty;
-      }
-      if (cibilVal > 800) finalScore += 5;
-      if (formData.cibilStatus === 'Outstanding & Defaults') finalScore -= 40;
-      
-      // FOIR Calculation & Impact
-      const totalExistingEMIs = (formData.activeLoans || []).reduce((sum: number, loan: any) => sum + (Number(loan.amount) || 0), 0);
-      const monthlyIncome = Number(formData.monthlySalary) || (Number(formData.monthlyRevenue) / 12) || 0;
-      const combinedIncome = formData.hasCoBorrower === 'Yes' 
-        ? monthlyIncome + (algorithmParams.coBorrowerMultiplier * (Number(formData.householdIncome || 0) / 12)) 
-        : monthlyIncome;
-      const foirThreshold = combinedIncome * (algorithmParams.maxFoirRatio / 100);
-      
-      // Custom EMI Estimation using the specific bank's dynamic interest rate
-      const tenureYears = Number(formData.tenure) || 20;
-      const monthlyRate = (finalRateNum / 100) / 12;
-      const n = tenureYears * 12;
-      const estEMI = (monthlyRate > 0 && n > 0) 
-        ? (loanAmt * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1) 
-        : 0;
-      
-      if (estEMI + totalExistingEMIs > foirThreshold) {
-        finalScore -= 25; // Penalty for low income vs EMI
-      }
-
-      // Age Limit Impact (usually max age 60/65)
-      const ageVal = Number(formData.age) || 30;
-      if (ageVal + tenureYears > algorithmParams.maxAgeLimit) {
-        finalScore -= (ageVal + tenureYears - algorithmParams.maxAgeLimit) * algorithmParams.agePenalty;
-      }
-      
-      // LTV matchmaking impact
-      if (calculatedLtv > algorithmParams.maxLtvRatio) finalScore -= 20;
-      else if (calculatedLtv > 80) finalScore -= 5;
-
-      // 2. Salary bank preference bonus
-      if (formData.bankAccount && b.name && (formData.bankAccount.toLowerCase().includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(formData.bankAccount.toLowerCase()))) {
-        finalScore += algorithmParams.salaryMatchBonus;
-      }
-      
-      // 3. Occupation impact
-      if (formData.occupation === 'Salaried') {
-        if (b.name === 'SBI' || b.name === 'LIC Housing') finalScore += 5;
-      } else if (formData.occupation === 'Business' || formData.occupation === 'Self-Employed') {
-        if (b.name === 'HDFC Bank' || b.name === 'ICICI Bank' || b.name === 'Axis Bank') finalScore += 8;
-        if (b.name === 'SBI') finalScore -= 10; // PSU banks are stricter with non-salaried
-      }
-
-      // 4. Loan Amount Impact
-      // High value loans (e.g., > 1Cr) - HDFC and ICICI have specialized HNI teams
-      if (loanAmt > 10000000) {
-        if (b.name === 'HDFC Bank' || b.name === 'ICICI Bank') finalScore += 10;
-      }
-
-      // 5. Tenure Impact
-      if (Number(formData.tenureInOrg || 0) >= 5 && b.name === 'LIC Housing') finalScore += 5;
-
-      const clampedScore = Math.min(99, Math.max(35, Math.round(finalScore)));
-      const probability = clampedScore > 85 ? 'Very High' : clampedScore > 70 ? 'High' : clampedScore > 55 ? 'Moderate' : 'Low';
-      
-      return { 
-        ...b, 
-        rate: dynamicRateStr, // Apply the dynamically calculated interest rate
-        estEMI: Math.round(estEMI), // Custom calculated EMI Specific to this bank
-        probability, 
-        finalScore: clampedScore,
-        avgRating: ratings.filter(r => r.lenderName === b.name).reduce((acc, curr) => acc + curr.rating, 0) / (ratings.filter(r => r.lenderName === b.name).length || 1) || b.rating,
-        totalRatings: ratings.filter(r => r.lenderName === b.name).length
-      };
-    }).sort((a, b) => b.finalScore - a.finalScore);
+  const getBankRecommendations = (overrideSort?: OfferSortOption): EnrichedLenderOffer[] => {
+    return compute43LenderRecommendations(
+      formData,
+      algorithmParams,
+      overrideSort || offersSortBy
+    );
   };
 
   const renderContent = () => {
@@ -3635,7 +3697,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                     <span className="flex items-center gap-1.5">
                       <span>1. What is your estimated loan requirement?</span>
                     </span>
-                    <CustomTooltip message="Choose an amount that fits your budget. Banks fund up to 80-90% of the property value." />
+                    <CustomTooltip 
+                      title="Estimated Loan Requirement" 
+                      message="Enter your target loan financing amount. Under RBI regulatory LTV (Loan-to-Value) caps, banks can finance up to 75%-90% of property cost depending on the ticket size." 
+                    />
                   </label>
                   <div className="relative group w-full">
                     <div className="absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none">
@@ -3690,8 +3755,14 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
 
                 {/* 3. Desired Loan Tenure */}
                 <div className="space-y-1 pt-2 md:pt-3 border-t border-natural-border/50">
-                  <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] flex items-center gap-1.5">
-                    <span>3. Your ideal repayment term?</span>
+                  <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] flex items-center justify-between w-full">
+                    <span className="flex items-center gap-1.5">
+                      <span>3. Your ideal repayment term?</span>
+                    </span>
+                    <CustomTooltip 
+                      title="Repayment Tenure & FOIR" 
+                      message="Repayment duration in years. A longer tenure lowers your monthly EMI outgo (giving you a healthier FOIR ratio) but increases aggregate interest liability over the life of the loan." 
+                    />
                   </label>
                   <div className="relative group w-full">
                     <div className="absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none">
@@ -3745,7 +3816,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                       <span className="flex items-center gap-1.5">
                         <span>Property Price</span>
                       </span>
-                      <CustomTooltip message="The estimated market or purchase price of the property." />
+                      <CustomTooltip 
+                        title="Property Price & LTV Cap" 
+                        message="The registered agreement value or market valuation. Banks enforce an RBI-mandated LTV (Loan-to-Value) Cap: up to 90% for loans ≤ ₹30 Lakhs, 80% for loans between ₹30 Lakhs and ₹75 Lakhs, and 75% for loans > ₹75 Lakhs. The remaining fraction is your down payment contribution." 
+                      />
                     </label>
                     <div className="relative group w-full">
                       <div className={cn("absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none transition-all", validationErrors.propertyValue ? "text-red-500" : "group-focus-within:text-[#10B981]")}>
@@ -3767,6 +3841,29 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                         </p>
                       )}
                     </div>
+                    {formData.propertyValue > 0 && formData.loanAmount > 0 && (() => {
+                      const ltv = Math.round((formData.loanAmount / formData.propertyValue) * 100);
+                      const statutoryCap = formData.loanAmount <= 3000000 ? 90 : formData.loanAmount <= 7500000 ? 80 : 75;
+                      const isCompliant = ltv <= statutoryCap;
+                      return (
+                        <div className={cn(
+                          "mt-1.5 p-2 rounded-lg border text-[10px] flex items-center justify-between gap-2",
+                          isCompliant ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-900" : "bg-amber-50/70 border-amber-200/80 text-amber-900"
+                        )}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold">LTV Ratio:</span>
+                            <span className="font-black text-xs">{ltv}%</span>
+                            <span className="text-[9px] text-stone-500">
+                              (Cap: {statutoryCap}% • {isCompliant ? 'Compliant' : 'Exceeds Cap'})
+                            </span>
+                          </div>
+                          <CustomTooltip 
+                            title="LTV Cap Calculation" 
+                            message={`Your requested loan is ${ltv}% of the property cost. The RBI ceiling for this loan tier is ${statutoryCap}%. ${isCompliant ? 'This is within permitted lending ratios.' : 'Lenders will require additional equity or down payment.'}`} 
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                   <AutocompleteInput 
                     label="Property Location (City)"
@@ -3781,7 +3878,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                 <div className="space-y-1 pt-2 md:pt-3 border-t border-natural-border/50">
                   <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] flex flex-wrap items-center gap-1.5 px-1">
                     <span>Property Categorization</span>
-                    <CustomTooltip message="Banks have different policies for Residential vs Land or Commercial properties." />
+                    <CustomTooltip 
+                      title="Property Categorization & LTV Cap" 
+                      message="Underwriting criteria vary by asset class: Residential ready homes qualify for the lowest repo-linked rates and highest LTV ceilings (80-90%). Commercial offices and bare land plots have tighter LTV limits (typically 60-70%)." 
+                    />
                     <span className="h-0.5 w-12 bg-[#10B981]/20 rounded-full" />
                   </label>
                   <div className="grid grid-flow-col auto-cols-fr gap-2 md:gap-3 w-full">
@@ -3914,7 +4014,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                             <span>Monthly take-home Salary</span>
                             <span className="text-red-500 font-bold">*</span>
                           </span>
-                          <CustomTooltip message="The final amount credited to your bank account every month after all deductions." />
+                          <CustomTooltip 
+                            title="Net Salary (FOIR Baseline)" 
+                            message="The net credit to your bank account each month after TDS and EPF deductions. This serves as the income baseline used by lenders to calculate your permissible FOIR debt capacity." 
+                          />
                         </label>
                         <div className="relative group w-full">
                           <div className={cn("absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none transition-all", validationErrors.monthlySalary ? "text-red-500" : "text-black")}>
@@ -3922,13 +4025,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                           </div>
                           <input 
                             type="number" 
-                            value={formData.monthlySalary || ''}
-                            onChange={(e) => updateForm('monthlySalary', e.target.value === '' ? 0 : Number(e.target.value))}
+                            value={formData.monthlySalary || ''} 
+                            onChange={(e) => updateForm('monthlySalary', e.target.value === '' ? 0 : Number(e.target.value))} 
                             className={cn(
                               "w-full bg-natural-bg border-none rounded-lg md:rounded-xl pl-8 md:pl-10 pr-4 md:pr-6 py-1.5 md:py-2 font-bold text-xs md:text-sm tracking-wider text-natural-sage focus:ring-4 ring-[#10B981]/10 transition-all outline-none tabular-nums placeholder:opacity-20",
                               validationErrors.monthlySalary ? "ring-4 ring-red-500/10 text-red-500" : ""
                             )}
-                            placeholder="Ex: 150000"
+                            placeholder="Ex: 150000" 
                           />
                         </div>
                         {validationErrors.monthlySalary && (
@@ -3938,7 +4041,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                         )}
                       </div>
                       <div className="space-y-1 pt-2 md:pt-3 border-t border-natural-border/50">
-                        <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A]">Current Organization tenure in years</label>
+                        <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] flex items-center justify-between w-full">
+                          <span>Current Organization tenure in years</span>
+                          <CustomTooltip 
+                            title="Employment Stability" 
+                            message="Lenders require at least 1-2 years of overall employment history and 6+ months with your current employer to prove income stability." 
+                          />
+                        </label>
                         <div className="relative group w-full">
                           <div className="absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none">
                             <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-natural-sage group-focus-within:text-[#10B981] transition-colors" />
@@ -4008,7 +4117,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                               <span>Total Monthly Sales (Avg)</span>
                               <span className="text-red-500 font-bold">*</span>
                             </span>
-                            <CustomTooltip message="Average monthly revenue/turnover of your business over the last 12 months." />
+                            <CustomTooltip 
+                              title="Business Sales & Net Margin" 
+                              message="Average monthly gross revenue or turnover over the past 12 months. Lenders calculate deemed net margins (typically 10%-25%) to determine monthly debt servicing capacity (FOIR)." 
+                            />
                           </label>
                           <div className="relative group w-full">
                             <div className={cn("absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none transition-all", validationErrors.monthlyRevenue ? "text-red-500" : "text-black")}>
@@ -4034,7 +4146,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
 
                         {/* No. of years in business */}
                         <div className="space-y-1">
-                          <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] flex items-center h-5">No. of years in business</label>
+                          <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] flex items-center justify-between w-full h-5">
+                            <span>No. of years in business</span>
+                            <CustomTooltip 
+                              title="Business Vintage Policy" 
+                              message="Lenders typically mandate a minimum 2-3 years of continuous audited operations or GST filings to qualify for commercial or retail financing." 
+                            />
+                          </label>
                           <div className="relative group w-full">
                             <div className="absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none">
                               <Briefcase className="w-3.5 h-3.5 md:w-4 md:h-4 text-natural-sage group-focus-within:text-[#10B981] transition-colors" />
@@ -4109,7 +4227,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                       <Users2 className="w-5 h-5 md:w-7 md:h-7 text-natural-terracotta" />
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="font-black text-sm md:text-base text-natural-sage tracking-tight">Add a Co-borrower?</h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-black text-sm md:text-base text-natural-sage tracking-tight">Add a Co-borrower?</h4>
+                        <CustomTooltip 
+                          title="Co-Borrower & FOIR Capacity" 
+                          message="Adding an earning co-borrower (spouse, parent, or working child) pools your household income. This effectively cuts your combined FOIR ratio in half and increases maximum loan sanction eligibility by up to 35%-45%." 
+                        />
+                      </div>
                       <p className="text-[10px] md:text-xs text-natural-muted max-w-xs font-medium">Adding a co-borrower (like a spouse) can increase your loan eligibility by up to <span className="text-emerald-600 font-black">45%</span>.</p>
                     </div>
                   </div>
@@ -4138,9 +4262,15 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                       className="space-y-4 pt-4 md:pt-6 border-t border-natural-border/50 px-1 lg:px-2 pb-2 overflow-hidden"
                     >
                       <div className="space-y-2">
-                        <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] px-1 flex items-center gap-1.5">
-                          Relation with the Co-borrower
-                          <span className="h-0.5 w-12 bg-[#10B981]/20 rounded-full" />
+                        <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] px-1 flex items-center justify-between w-full">
+                          <span className="flex items-center gap-1.5">
+                            Relation with the Co-borrower
+                            <span className="h-0.5 w-12 bg-[#10B981]/20 rounded-full" />
+                          </span>
+                          <CustomTooltip 
+                            title="Eligible Co-Applicants" 
+                            message="Under RBI and bank underwriting policies, blood relatives and spouses who share financial interest in the property can act as financial co-applicants." 
+                          />
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[
@@ -4167,7 +4297,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
 
                       <div className="space-y-2">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                           <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] px-1">Co-borrower's Monthly Net Income</label>
+                           <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] px-1 flex items-center gap-1.5">
+                             <span>Co-borrower's Monthly Net Income</span>
+                             <CustomTooltip 
+                               title="Co-Borrower Income & FOIR" 
+                               message="Net monthly bank credit of the co-applicant. Lenders add this directly into your household debt service capacity (FOIR denominator)." 
+                             />
+                           </label>
                            <div className="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest italic border border-emerald-100 self-start sm:self-auto shadow-inner">Multiplier Activated: x1.45</div>
                         </div>
                         <div className="relative group w-full">
@@ -4246,9 +4382,15 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
               >
                 <div className="space-y-4 md:space-y-6">
                   <div className="flex flex-col items-center gap-3 py-4 md:py-6 bg-natural-bg/50 rounded-xl md:rounded-2xl border border-natural-border/50 text-center space-y-1.5">
-                    <p className="text-xs md:text-sm font-bold tracking-wider text-[#0F172A] px-6">
-                      Do you currently have any other active loans running?
-                    </p>
+                    <div className="flex items-center justify-center gap-2 px-6">
+                      <p className="text-xs md:text-sm font-bold tracking-wider text-[#0F172A]">
+                        Do you currently have any other active loans running?
+                      </p>
+                      <CustomTooltip 
+                        title="FOIR & Active Loan Obligations" 
+                        message="Fixed Obligation to Income Ratio (FOIR) measures the percentage of your monthly income committed to paying existing EMIs and credit cards. Banks cap overall FOIR between 50% and 65% when sanctioning new loans." 
+                      />
+                    </div>
                     <div className="flex gap-3">
                       <button
                         type="button"
@@ -4287,10 +4429,14 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
 
                   {hasActiveLoansSelected === true && (
                     <div className="space-y-3 md:space-y-5 pt-3 border-t border-natural-border/20">
-                      <div className="text-center">
+                      <div className="flex items-center justify-between px-1">
                         <p className="text-[10px] md:text-xs text-slate-900 font-bold tracking-wide">
-                          Select type of loan, bank and amount.....
+                          Select type of loan, bank and amount
                         </p>
+                        <CustomTooltip 
+                          title="FOIR Ratio Impact" 
+                          message="Every ₹10,000 of ongoing monthly EMI obligations reduces your new loan sanction limit by approximately ₹10-12 Lakhs due to banking FOIR ceiling rules." 
+                        />
                       </div>
                       
                       <AnimatePresence mode="popLayout">
@@ -4358,8 +4504,14 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                               </div>
 
                               <div className="space-y-1 pt-1.5">
-                                <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] px-2 flex items-center gap-1.5">
-                                  <span className="text-[#10B981] font-bold">₹</span> Monthly EMI Repayment
+                                <label className="text-xs md:text-sm font-semibold tracking-wider text-[#0F172A] px-2 flex items-center justify-between w-full">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="text-[#10B981] font-bold">₹</span> Monthly EMI Repayment
+                                  </span>
+                                  <CustomTooltip 
+                                    title="Existing EMI Obligation" 
+                                    message="Enter the precise total EMI debited each month. Any undeclared obligations will be retrieved during CIBIL / Experian bureau scrub and affect the final credit decision." 
+                                  />
                                 </label>
                                 <div className="relative group w-full">
                                   <div className="absolute inset-y-0 left-3.5 md:left-4 flex items-center pointer-events-none">
@@ -4382,6 +4534,50 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                           ))}
                         </div>
                       </AnimatePresence>
+
+                      {/* Live FOIR Calculator Indicator */}
+                      {(() => {
+                        const totalEmi = formData.activeLoans.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+                        const primaryIncome = formData.occupation === 'Salaried' 
+                          ? (formData.monthlySalary || 0) 
+                          : (formData.monthlyRevenue ? formData.monthlyRevenue * 0.20 : 0);
+                        const coIncome = (formData.hasCoBorrower === 'Yes' ? (formData.coBorrowerMonthlyIncome || 0) : 0);
+                        const totalIncome = primaryIncome + coIncome;
+                        
+                        if (totalIncome > 0 && totalEmi > 0) {
+                          const foirPercent = Math.round((totalEmi / totalIncome) * 100);
+                          const isHealthy = foirPercent <= 40;
+                          const isWarning = foirPercent > 40 && foirPercent <= 55;
+                          return (
+                            <div className={cn(
+                              "p-3 rounded-xl border flex items-center justify-between gap-3 text-xs",
+                              isHealthy 
+                                ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-900" 
+                                : isWarning 
+                                ? "bg-amber-50/70 border-amber-200/80 text-amber-900" 
+                                : "bg-red-50/70 border-red-200/80 text-red-900"
+                            )}>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold">Current FOIR Ratio:</span>
+                                  <span className="font-black text-sm">{foirPercent}%</span>
+                                  <span className="text-[10px] opacity-80">
+                                    ({isHealthy ? 'Healthy Capacity' : isWarning ? 'Moderate Commitment' : 'High Debt Burden'})
+                                  </span>
+                                </div>
+                                <p className="text-[10px] opacity-75">
+                                  ₹{totalEmi.toLocaleString('en-IN')}/mo committed out of ₹{Math.round(totalIncome).toLocaleString('en-IN')}/mo estimated net income.
+                                </p>
+                              </div>
+                              <CustomTooltip 
+                                title="Live FOIR Ratio Analysis" 
+                                message={`Your current monthly commitments consume ${foirPercent}% of your net income. Banking policies permit a maximum combined FOIR of 50-60% inclusive of your requested home loan EMI.`} 
+                              />
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       <button 
                          onClick={() => updateForm('activeLoans', [...formData.activeLoans, { id: Date.now(), bankName: '', type: ['Loan Transfer', 'Top up Loan'].includes(formData.purpose) ? 'Home Loan' : 'Personal Loan', amount: 0 }])}
@@ -4940,79 +5136,143 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                     </button>
                   </motion.div>
                 ) : (
-                  <div className="grid gap-8">
-                    {getBankRecommendations().map((bank, i) => (
-                      <motion.div 
-                        key={bank.name}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                                                className="bg-white p-3.5 sm:p-4 md:p-5 rounded-xl md:rounded-2xl border border-natural-border shadow-huge hover:shadow-[0_16px_36px_-8px_rgba(31,50,45,0.06)] transition-all group relative overflow-hidden"
+                  <div className="space-y-6">
+                    {/* Step 9 Header Bar with Quick Stats & Excel Download */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-50/80 p-3.5 md:p-4 rounded-2xl border border-stone-200">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-md inline-block mb-1">
+                          Dynamic Algorithm Matching Active
+                        </span>
+                        <p className="text-xs text-stone-600 font-medium">
+                          Evaluated against <strong className="text-stone-900 font-bold">{getBankRecommendations().length} Institutional Lenders</strong> (PSU Banks, Private Banks, HFCs & SFBs)
+                        </p>
+                      </div>
+                      <a
+                        href="/Bank_and_NBFC_Home_Loan_and_LAP_Guidelines.xlsx"
+                        download="Bank_and_NBFC_Home_Loan_and_LAP_Guidelines.xlsx"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                        title="Download Complete 43+ Lenders Policy Matrix in Excel"
                       >
-                        {i === 0 && (
-                          <div className="absolute top-0 right-4 sm:right-16 bg-natural-terracotta text-white px-3 sm:px-4 py-0.5 rounded-b-lg text-[7.5px] sm:text-[8px] font-black uppercase tracking-[0.3em] shadow-lg">
-                            Recommended
-                          </div>
-                        )}
+                        <Download className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>43+ Lenders Excel</span>
+                      </a>
+                    </div>
 
-                        {formData.bankAccount && (bank.name.toLowerCase().includes(formData.bankAccount.toLowerCase()) || formData.bankAccount.toLowerCase().includes(bank.name.toLowerCase())) && (
-                          <div className="absolute top-0 right-4 sm:right-16 bg-natural-sage text-white px-3 sm:px-4 py-0.5 rounded-b-lg text-[7.5px] sm:text-[8px] font-black uppercase tracking-[0.3em] shadow-lg flex items-center gap-1 dynamic-preferred">
-                            <CheckCircle2 className="w-2.5 h-2.5" /> Preferred
-                          </div>
-                        )}
-                        
-                        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 lg:gap-6 pt-1 lg:pt-0">
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-2.5 md:gap-4">
-                               <div className="w-10 h-10 md:w-12 md:h-12 bg-natural-bg rounded-lg md:rounded-xl text-natural-sage flex items-center justify-center shadow-inner shrink-0 group-hover:scale-105 transition-all duration-500">
-                                 <Building className="w-5 h-5 md:w-6 md:h-6 text-[#10B981]" />
-                               </div>
-                               <div>
-                                 <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-0.5">
-                                   <h3 className="text-base md:text-lg font-bold text-natural-sage tracking-tight italic">{bank.name}</h3>
-                                   <div className="flex items-center gap-0.5 bg-amber-50 text-amber-600 px-1 py-0.5 rounded-md text-[7.5px] md:text-[8.5px] font-black border border-amber-100/50">
-                                     <Star className="w-2 h-2 fill-amber-400 stroke-amber-400" /> {bank.rating}
+                    <div className="grid gap-5">
+                      {(showAllStep9Offers ? getBankRecommendations() : getBankRecommendations().slice(0, 6)).map((bank, i) => (
+                        <motion.div 
+                          key={bank.name}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-white p-4 md:p-5 rounded-2xl border border-natural-border shadow-md hover:shadow-lg transition-all group relative overflow-hidden"
+                        >
+                          {i === 0 && (
+                            <div className="absolute top-0 right-4 sm:right-16 bg-natural-terracotta text-white px-3 sm:px-4 py-0.5 rounded-b-lg text-[7.5px] sm:text-[8px] font-black uppercase tracking-[0.3em] shadow-lg">
+                              Top Match
+                            </div>
+                          )}
+
+                          {formData.bankAccount && (bank.name.toLowerCase().includes(formData.bankAccount.toLowerCase()) || formData.bankAccount.toLowerCase().includes(bank.name.toLowerCase())) && (
+                            <div className="absolute top-0 right-4 sm:right-16 bg-natural-sage text-white px-3 sm:px-4 py-0.5 rounded-b-lg text-[7.5px] sm:text-[8px] font-black uppercase tracking-[0.3em] shadow-lg flex items-center gap-1 dynamic-preferred">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Preferred Salary Bank
+                            </div>
+                          )}
+                          
+                          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 lg:gap-6 pt-1 lg:pt-0">
+                            <div className="flex-1 space-y-3">
+                              <div className="flex items-start sm:items-center gap-3 md:gap-4">
+                                <BankLogo bank={bank.name} size="md" className="md:w-12 md:h-12 group-hover:scale-105 transition-all duration-300 shrink-0" />
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-1">
+                                    <h3 className="text-base md:text-lg font-black text-natural-sage tracking-tight">{bank.name}</h3>
+                                    <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
+                                      {bank.categoryGroup}
+                                    </span>
+                                    {bank.hasFemaleConcession && (
+                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                        Women Concession
+                                      </span>
+                                    )}
+                                    <div className="flex items-center gap-0.5 bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md text-[8.5px] font-black border border-amber-100/50">
+                                      <Star className="w-2.5 h-2.5 fill-amber-400 stroke-amber-400" /> {bank.rating}
                                     </div>
-                                 </div>
-                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[8px] md:text-[8.5px] font-black text-natural-muted uppercase tracking-[0.2em]">
-                                    <span className="flex items-center gap-0.5 text-emerald-600 font-extrabold uppercase"><Sparkles className="w-2.5 h-2.5 text-emerald-500 fill-emerald-500" /> {bank.finalScore}% Match</span>
-                                    <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" /> {bank.processingTime}</span>
-                                    <span className="flex items-center gap-0.5"><Activity className="w-2.5 h-2.5" /> {bank.probability} Confidence</span>
-                                 </div>
-                               </div>
-                            </div>
-                            
-                            <div className="flex flex-wrap gap-1">
-                               {bank.features.slice(0, 3).map(f => (
-                                 <span key={f} className="px-2 py-0.5 bg-white text-natural-muted rounded-md text-[7.5px] md:text-[8.5px] font-black uppercase tracking-widest border border-natural-border shadow-sm flex items-center gap-0.5 hover:border-natural-sage/20 transition-all">
-                                   <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" /> {f}
-                                 </span>
-                               ))}
-                            </div>
-                          </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[8.5px] md:text-[9px] font-black text-natural-muted uppercase tracking-[0.15em]">
+                                    <span className="flex items-center gap-1 text-emerald-600 font-extrabold uppercase"><Sparkles className="w-2.5 h-2.5 text-emerald-500 fill-emerald-500" /> {bank.finalScore}% Match</span>
+                                    <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {bank.processingTime}</span>
+                                    <span className="flex items-center gap-1"><Activity className="w-2.5 h-2.5" /> {bank.probability} Confidence</span>
+                                  </div>
+                                </div>
+                              </div>
 
-                          <div className="flex flex-col sm:flex-row lg:flex-col items-center justify-between lg:justify-center bg-natural-bg/50 p-3 lg:p-4 rounded-lg lg:rounded-xl border border-natural-border/50 text-center gap-2 lg:space-y-2 lg:min-w-[190px]">
-                             <div className="text-center w-full">
-                                <p className="text-xl md:text-2xl font-bold text-natural-sage tracking-tighter tabular-nums">{bank.rate}</p>
-                                <p className="text-[7px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.3em] mt-0.5">Annual Interest Rate</p>
-                             </div>
-                             <div className="text-center w-full border-t lg:border-t border-slate-200/50 pt-1">
+                              {/* Promotional Scheme Highlight */}
+                              {bank.currentScheme && (
+                                <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl px-3 py-1.5 text-xs text-amber-900 font-medium line-clamp-1">
+                                  <strong className="font-bold text-amber-950">Offer: </strong>{bank.currentScheme}
+                                </div>
+                              )}
+                              
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {bank.features.slice(0, 3).map(f => (
+                                  <span key={f} className="px-2 py-0.5 bg-white text-natural-muted rounded-md text-[8px] md:text-[9px] font-bold tracking-tight border border-natural-border shadow-2xs flex items-center gap-1">
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" /> {f}
+                                  </span>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPolicyModalLender(bank);
+                                    setIsPolicyModalOpen(true);
+                                  }}
+                                  className="px-2.5 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md text-[8px] md:text-[9px] font-bold transition-colors cursor-pointer border border-stone-200 flex items-center gap-1"
+                                >
+                                  <Info className="w-2.5 h-2.5 text-stone-500" /> View Policy Norms
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row lg:flex-col items-center justify-between lg:justify-center bg-natural-bg/50 p-3 lg:p-4 rounded-xl border border-natural-border/50 text-center gap-2 lg:space-y-2 lg:min-w-[200px]">
+                              <div className="text-center w-full">
+                                <p className="text-xl md:text-2xl font-black text-natural-sage tracking-tighter tabular-nums">{bank.rate}</p>
+                                <p className="text-[7.5px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.2em] mt-0.5">Calculated Interest Rate</p>
+                              </div>
+                              <div className="text-center w-full border-t lg:border-t border-slate-200/50 pt-1">
                                 <p className="text-sm md:text-base font-extrabold text-natural-terracotta tracking-tight tabular-nums">₹{bank.estEMI?.toLocaleString('en-IN') || '0'}/mo</p>
-                                <p className="text-[7px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.3em] mt-0.5">Estimated EMI</p>
-                             </div>
-                             <button 
-                               onClick={() => {
-                                 updateForm('selectedBank', bank);
-                                 handleSubmit(bank);
+                                <p className="text-[7.5px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.2em] mt-0.5">Estimated Monthly EMI</p>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  updateForm('selectedBank', bank);
+                                  handleSubmit(bank);
                                 }}
-                               disabled={isSubmitting}
-                               className="w-full sm:w-auto lg:w-full bg-[#10B981] text-white px-4 py-2 md:px-5 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:scale-[1.03] active:scale-95 hover:bg-[#0e9f6e] transition-all shadow-xl shadow-[#10B981]/20 group/btn cursor-pointer"
-                             >
-                               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Apply Now <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" /></>}
-                             </button>
+                                disabled={isSubmitting}
+                                className="w-full sm:w-auto lg:w-full bg-[#10B981] text-white px-4 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-95 hover:bg-[#0e9f6e] transition-all shadow-md group/btn cursor-pointer"
+                              >
+                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Apply Now <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" /></>}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Expand or Collapse all 43+ institutions toggle */}
+                    {getBankRecommendations().length > 6 && (
+                      <div className="text-center pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllStep9Offers(prev => !prev)}
+                          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer"
+                        >
+                          {showAllStep9Offers ? (
+                            <span>Collapse to Top 6 Recommendations</span>
+                          ) : (
+                            <span>Explore All {getBankRecommendations().length} Institutional Lenders</span>
+                          )}
+                          <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", showAllStep9Offers && "rotate-180")} />
+                        </button>
+                      </div>
+                    )}
 
                     {/* Maximum Loan Eligibility & Scenarios Matrix (Placed After Banks) */}
                     {activeAssessment && (
@@ -5322,40 +5582,140 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
       </div>
     );
       case 'recommendations':
+        return (() => {
+        const allRecommendations = getBankRecommendations();
+        const categoryGroups: { id: LenderCategoryGroup; label: string; count: number }[] = [
+          { id: 'All', label: 'All Lenders', count: allRecommendations.length },
+          { id: 'PSU Banks', label: 'PSU Banks', count: allRecommendations.filter(r => r.categoryGroup === 'PSU Banks').length },
+          { id: 'Private Banks', label: 'Private Banks', count: allRecommendations.filter(r => r.categoryGroup === 'Private Banks').length },
+          { id: 'HFCs & NBFCs', label: 'HFCs & NBFCs', count: allRecommendations.filter(r => r.categoryGroup === 'HFCs & NBFCs').length },
+          { id: 'Small Finance Banks', label: 'Small Finance Banks', count: allRecommendations.filter(r => r.categoryGroup === 'Small Finance Banks').length },
+        ];
+
+        const filteredRecommendations = allRecommendations.filter((rec) => {
+          const matchesCategory = selectedCategoryGroup === 'All' || rec.categoryGroup === selectedCategoryGroup;
+          const q = lenderSearchQuery.toLowerCase().trim();
+          if (!q) return matchesCategory;
+          const matchesSearch = 
+            rec.name.toLowerCase().includes(q) ||
+            (rec.shortName && rec.shortName.toLowerCase().includes(q)) ||
+            (rec.category && rec.category.toLowerCase().includes(q)) ||
+            (rec.currentScheme && rec.currentScheme.toLowerCase().includes(q)) ||
+            rec.features.some(f => f.toLowerCase().includes(q));
+          return matchesCategory && matchesSearch;
+        });
+
         return (
-        <div className="space-y-8 md:space-y-12 relative pb-28">
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4 md:px-0">
+        <div className="space-y-8 md:space-y-10 relative pb-28">
+           {/* Page Header */}
+           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 px-4 md:px-0">
              <div>
-               <h2 className="text-3xl md:text-4xl font-black text-natural-sage tracking-tight mb-2">Compare Best Rates.</h2>
-               <p className="text-natural-muted font-medium text-sm md:text-lg">Curated lending offers with real borrower feedback & live amortization analysis.</p>
-             </div>
-             {selectedCompareBanks.length < 2 ? (
-               <button
-                 onClick={() => {
-                   const top3 = getBankRecommendations().slice(0, 3).map(b => b.name);
-                   setSelectedCompareBanks(top3);
-                 }}
-                 className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs self-start md:self-auto"
-               >
-                 <Sparkles className="w-4 h-4 text-emerald-600" />
-                 <span>Auto-Compare Top 3 Offers</span>
-               </button>
-             ) : (
-               <div className="flex items-center gap-2">
-                 <button
-                   onClick={() => setIsCompareOpen(true)}
-                   className="flex items-center gap-2 px-4 py-2.5 bg-natural-sage hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
-                 >
-                   <span>View Side-by-Side Matrix ({selectedCompareBanks.length})</span>
-                 </button>
-                 <button
-                   onClick={() => setSelectedCompareBanks([])}
-                   className="px-3 py-2.5 text-natural-muted hover:text-red-600 text-xs font-bold transition-colors cursor-pointer"
-                 >
-                   Clear
-                 </button>
+               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-[10px] font-black uppercase tracking-wider mb-2 border border-emerald-200">
+                 <Sparkles className="w-3 h-3 text-emerald-600" />
+                 <span>43+ Institutional Lenders Live Dataset</span>
                </div>
-             )}
+               <h2 className="text-3xl md:text-4xl font-black text-natural-sage tracking-tight mb-2">Compare Best Rates.</h2>
+               <p className="text-natural-muted font-medium text-sm md:text-base max-w-3xl">
+                 Comprehensive institutional underwriting norms across Public Sector Banks, Private Banks, Housing Finance Companies, and SFBs with live algorithmic risk loaders.
+               </p>
+             </div>
+
+             <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
+               <a
+                 href="/Bank_and_NBFC_Home_Loan_and_LAP_Guidelines.xlsx"
+                 download="Bank_and_NBFC_Home_Loan_and_LAP_Guidelines.xlsx"
+                 className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                 title="Download Complete 43+ Lenders Policy Matrix in Excel"
+               >
+                 <Download className="w-4 h-4 text-emerald-600" />
+                 <span>Download Excel</span>
+               </a>
+
+               <OffersSortingDropdown
+                 value={offersSortBy}
+                 onChange={setOffersSortBy}
+                 totalOffersCount={allRecommendations.length}
+               />
+
+               {selectedCompareBanks.length < 2 ? (
+                 <button
+                   onClick={() => {
+                     const top3 = allRecommendations.slice(0, 3).map(b => b.name);
+                     setSelectedCompareBanks(top3);
+                   }}
+                   className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                 >
+                   <Sparkles className="w-4 h-4 text-emerald-600" />
+                   <span>Compare Top 3</span>
+                 </button>
+               ) : (
+                 <div className="flex items-center gap-2">
+                   <button
+                     onClick={() => setIsCompareOpen(true)}
+                     className="flex items-center gap-2 px-4 py-2.5 bg-natural-sage hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
+                   >
+                     <span>Side-by-Side ({selectedCompareBanks.length})</span>
+                   </button>
+                   <button
+                     onClick={() => setSelectedCompareBanks([])}
+                     className="px-3 py-2.5 text-natural-muted hover:text-red-600 text-xs font-bold transition-colors cursor-pointer"
+                   >
+                     Clear
+                   </button>
+                 </div>
+               )}
+             </div>
+           </div>
+
+           {/* Filter & Search Bar */}
+           <div className="bg-stone-50/80 border border-stone-200/80 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 px-4 md:px-5">
+             {/* Category Filter Pills */}
+             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+               {categoryGroups.map((cat) => {
+                 const isSelected = selectedCategoryGroup === cat.id;
+                 return (
+                   <button
+                     key={cat.id}
+                     type="button"
+                     onClick={() => setSelectedCategoryGroup(cat.id)}
+                     className={cn(
+                       "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                       isSelected
+                         ? "bg-natural-sage text-white shadow-xs"
+                         : "bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-900 border border-stone-200"
+                     )}
+                   >
+                     <span>{cat.label}</span>
+                     <span className={cn(
+                       "px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+                       isSelected ? "bg-white/20 text-white" : "bg-stone-100 text-stone-500"
+                     )}>
+                       {cat.count}
+                     </span>
+                   </button>
+                 );
+               })}
+             </div>
+
+             {/* Search Input */}
+             <div className="relative min-w-[240px] md:w-72">
+               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+               <input
+                 type="text"
+                 value={lenderSearchQuery}
+                 onChange={(e) => setLenderSearchQuery(e.target.value)}
+                 placeholder="Search 43+ lenders, schemes..."
+                 className="w-full pl-10 pr-8 py-2 bg-white border border-stone-200 rounded-xl text-xs font-semibold text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-xs"
+               />
+               {lenderSearchQuery && (
+                 <button
+                   onClick={() => setLenderSearchQuery('')}
+                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
+                 >
+                   <X className="w-3.5 h-3.5" />
+                 </button>
+               )}
+             </div>
            </div>
 
            {/* DYNAMIC OFFER COMPARISON BAR CHART SECTION (When 2+ offers selected) */}
@@ -5366,7 +5726,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                transition={{ duration: 0.3 }}
              >
                <OffersComparisonChart
-                 selectedBanks={getBankRecommendations().filter(b => selectedCompareBanks.includes(b.name))}
+                 selectedBanks={allRecommendations.filter(b => selectedCompareBanks.includes(b.name))}
                  defaultLoanAmount={formData.loanAmount || 4500000}
                  defaultTenureYears={20}
                  onSelectBank={(bank) => {
@@ -5384,115 +5744,163 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
              </motion.div>
            )}
            
-           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 px-4 md:px-0">
-              {getBankRecommendations().map((rec, i) => (
-                <div key={i} className="bg-white border border-natural-border/60 hover:border-[#10B981]/50 rounded-[2rem] p-6 hover:shadow-2xl transition-all duration-300 relative flex flex-col justify-between group overflow-hidden">
-                   {/* Top Badge Row Offset */}
-                   <div className="flex items-center justify-between pb-4 border-b border-natural-border/30 mb-5">
-                     <button
-                       onClick={() => {
-                         const isSelected = selectedCompareBanks.includes(rec.name);
-                         if (isSelected) {
-                           setSelectedCompareBanks(prev => prev.filter(name => name !== rec.name));
-                         } else {
-                           if (selectedCompareBanks.length >= 5) {
-                             alert("You can compare up to 5 banks simultaneously.");
-                             return;
+           {/* Offers Cards Grid */}
+           {filteredRecommendations.length === 0 ? (
+             <div className="text-center py-16 bg-white rounded-3xl border border-natural-border/60 p-8 space-y-3">
+               <Building2 className="w-12 h-12 text-stone-300 mx-auto" />
+               <h4 className="text-base font-bold text-stone-700">No lenders match your search</h4>
+               <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                 Try selecting "All Lenders" or clearing your search keywords.
+               </p>
+               <button
+                 onClick={() => {
+                   setSelectedCategoryGroup('All');
+                   setLenderSearchQuery('');
+                 }}
+                 className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+               >
+                 Reset Filters
+               </button>
+             </div>
+           ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 px-4 md:px-0">
+                {filteredRecommendations.map((rec, i) => (
+                  <div key={rec.name} className="bg-white border border-natural-border/70 hover:border-emerald-500/50 rounded-3xl p-6 hover:shadow-xl transition-all duration-300 relative flex flex-col justify-between group overflow-hidden">
+                     {/* Top Action & Badge Row */}
+                     <div className="flex items-center justify-between pb-3.5 border-b border-stone-100 mb-4">
+                       <button
+                         onClick={() => {
+                           const isSelected = selectedCompareBanks.includes(rec.name);
+                           if (isSelected) {
+                             setSelectedCompareBanks(prev => prev.filter(name => name !== rec.name));
+                           } else {
+                             if (selectedCompareBanks.length >= 5) {
+                               alert("You can compare up to 5 banks simultaneously.");
+                               return;
+                             }
+                             setSelectedCompareBanks(prev => [...prev, rec.name]);
                            }
-                           setSelectedCompareBanks(prev => [...prev, rec.name]);
-                         }
-                       }}
-                       className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all cursor-pointer border ${
-                         selectedCompareBanks.includes(rec.name)
-                           ? 'bg-[#10B981] text-white border-[#10B981] shadow-md scale-[1.03]'
-                           : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-slate-100 hover:border-slate-300'
-                       }`}
-                     >
-                       {selectedCompareBanks.includes(rec.name) ? (
-                         <>
-                           <Check className="w-3 h-3 stroke-[3]" /> Added to Compare
-                         </>
-                       ) : (
-                         <>
-                           <Plus className="w-3 h-3 text-[#10B981] stroke-[3]" /> Add to Compare
-                         </>
-                       )}
-                     </button>
-                     <div className="flex items-center gap-2">
-                       <span className="px-2.5 py-1 bg-natural-sage/5 text-natural-sage text-[9px] font-black uppercase tracking-widest rounded-lg border border-natural-sage/10">
-                         {rec.processingTime}
-                       </span>
-                       <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-100 flex items-center gap-1">
-                         <Sparkles className="w-3 h-3 text-emerald-500 fill-emerald-500" /> {rec.finalScore || rec.score || 90}% Match
-                       </span>
-                     </div>
-                   </div>
-
-                   <div className="space-y-5">
-                     {/* Bank Header Section */}
-                     <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-natural-bg border border-natural-border/80 text-natural-sage font-black text-sm uppercase tracking-wider rounded-2xl flex items-center justify-center shadow-sm">
-                         {rec.name.substring(0, 2)}
+                         }}
+                         className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all cursor-pointer border ${
+                           selectedCompareBanks.includes(rec.name)
+                             ? 'bg-[#10B981] text-white border-[#10B981] shadow-xs scale-[1.02]'
+                             : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                         }`}
+                       >
+                         {selectedCompareBanks.includes(rec.name) ? (
+                           <>
+                             <Check className="w-3 h-3 stroke-[3]" /> Added to Compare
+                           </>
+                         ) : (
+                           <>
+                             <Plus className="w-3 h-3 text-[#10B981] stroke-[3]" /> Compare
+                           </>
+                         )}
+                       </button>
+                       <div className="flex items-center gap-1.5">
+                         <span className="px-2 py-0.5 bg-stone-100 text-stone-700 text-[9px] font-bold rounded-md border border-stone-200">
+                           {rec.categoryGroup}
+                         </span>
+                         <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-100 flex items-center gap-1">
+                           <Sparkles className="w-3 h-3 text-emerald-500 fill-emerald-500" /> {rec.finalScore || rec.score || 90}% Match
+                         </span>
                        </div>
-                       <div>
-                         <h3 className="text-xl font-black text-natural-sage tracking-tight">{rec.name}</h3>
-                         <div className="flex items-center gap-1.5 mt-0.5 text-natural-muted font-bold text-[10px]">
-                           <Star className="w-3.5 h-3.5 fill-yellow-400 stroke-yellow-400" />
-                           <span>{(rec.avgRating || rec.rating).toFixed(1)}</span>
-                           <span className="opacity-44">({rec.totalRatings || Math.floor(Math.random() * 200 + 40)} reviews)</span>
+                     </div>
+
+                     <div className="space-y-4">
+                       {/* Bank Header Section */}
+                       <div className="flex items-start gap-3.5">
+                         <BankLogo bank={rec.name} size="md" className="md:w-12 md:h-12 group-hover:scale-105 transition-all duration-300 shrink-0" />
+                         <div>
+                           <h3 className="text-lg font-black text-natural-sage tracking-tight leading-tight">{rec.name}</h3>
+                           <div className="flex flex-wrap items-center gap-2 mt-1 text-natural-muted font-bold text-[10px]">
+                             <div className="flex items-center gap-1">
+                               <Star className="w-3 h-3 fill-yellow-400 stroke-yellow-400" />
+                               <span>{rec.rating.toFixed(1)}</span>
+                             </div>
+                             <span className="text-stone-300">•</span>
+                             <span className="text-stone-500">{rec.processingTime} TAT</span>
+                             {rec.hasFemaleConcession && (
+                               <>
+                                 <span className="text-stone-300">•</span>
+                                 <span className="text-emerald-700 font-semibold">Women Concession</span>
+                               </>
+                             )}
+                           </div>
                          </div>
                        </div>
-                     </div>
 
-                     {/* Compact description */}
-                     <p className="text-xs text-natural-muted font-medium leading-relaxed">
-                       Accelerate your home-buying journey with {rec.name}'s transparent mortgage process and dedicated customer support.
-                     </p>
+                       {/* Current Scheme Banner (if any) */}
+                       {rec.currentScheme && (
+                         <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl px-3 py-2 text-xs text-amber-900 font-medium line-clamp-2">
+                           <strong className="font-bold text-amber-950">Active Scheme: </strong>{rec.currentScheme}
+                         </div>
+                       )}
 
-                     {/* Main Bento Value Highlight Box with clever offsets */}
-                     <div className="bg-natural-bg/50 border border-natural-border/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between group-hover:bg-natural-bg transition-colors duration-300 gap-3">
-                       <div className="text-center sm:text-left flex-1 w-full">
-                         <span className="text-[9px] font-black text-natural-muted uppercase tracking-widest block font-sans text-center sm:text-left">Starting Rate</span>
-                         <p className="text-2xl sm:text-3xl font-black text-natural-text mt-0.5 tracking-tight tabular-nums text-center sm:text-left">{rec.rate}</p>
+                       {/* Rate & Estimated EMI Box */}
+                       <div className="bg-natural-bg/50 border border-natural-border/40 rounded-2xl p-3.5 flex items-center justify-between group-hover:bg-natural-bg transition-colors duration-300">
+                         <div className="text-left flex-1">
+                           <span className="text-[8.5px] font-black text-natural-muted uppercase tracking-wider block">Indicative Rate</span>
+                           <p className="text-2xl font-black text-natural-text mt-0.5 tracking-tight tabular-nums">{rec.rate}</p>
+                         </div>
+                         <div className="text-right border-l border-natural-border/50 pl-3 py-0.5 flex-1">
+                           <span className="text-[8.5px] font-black text-natural-muted uppercase tracking-wider block">Est. Monthly EMI</span>
+                           <p className="text-base font-extrabold text-natural-terracotta mt-0.5 tabular-nums">₹{rec.estEMI?.toLocaleString('en-IN') || '0'}</p>
+                         </div>
                        </div>
-                       <div className="text-center sm:text-right border-t sm:border-t-0 sm:border-l border-natural-border/50 pt-3 sm:pt-0 sm:pl-4 py-1 flex-1 w-full flex flex-col items-center sm:items-end">
-                         <span className="text-[9px] font-black text-natural-muted uppercase tracking-widest block font-sans text-center sm:text-right">Tenure Range</span>
-                         <p className="text-xs font-black text-natural-sage mt-1 text-center sm:text-right">Up to 30 Yrs</p>
-                       </div>
-                     </div>
 
-                     {/* Keys/badge clouds carefully offset */}
-                     <div className="flex flex-wrap gap-1.5 pt-2">
-                       {rec.features.map(t => (
-                         <span key={t} className="px-2.5 py-1 bg-white hover:bg-natural-bg text-natural-sage text-[9px] font-bold tracking-tight rounded-lg border border-natural-border/80 transition-colors">
-                           ✓ {t}
+                       {/* Processing Fee Info */}
+                       <div className="flex items-center justify-between text-[11px] px-1 text-stone-600 font-medium">
+                         <span>Processing Fee:</span>
+                         <span className="font-bold text-stone-800 text-right truncate max-w-[170px]" title={rec.processingFee}>
+                           {rec.processingFee}
                          </span>
-                       ))}
-                     </div>
-                   </div>
+                       </div>
 
-                   {/* Underneath footer cta row */}
-                   <div className="mt-6 pt-4 border-t border-natural-border/30 flex items-center justify-between">
-                     <span className="text-[9px] font-black text-natural-muted uppercase tracking-wider">Fast Track Approval</span>
-                     <button 
-                       onClick={() => {
-                         updateForm('selectedBank', rec);
-                         setActiveTab('loans');
-                         setLoansViewMode('apply');
-                         if (formData.loanAmount > 0) {
-                           setLoanStep(8);
-                         } else {
-                           setLoanStep(1);
-                         }
-                       }}
-                       className="bg-[#10B981] hover:bg-[#0e9f6e] text-white rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-md active:scale-95 duration-200"
-                     >
-                       Select Offer <ArrowRight className="w-3 h-3" />
-                     </button>
-                   </div>
-                </div>
-              ))}
-           </div>
+                       {/* Feature badges */}
+                       <div className="flex flex-wrap gap-1 pt-1">
+                         {rec.features.map(t => (
+                           <span key={t} className="px-2 py-0.5 bg-stone-50 hover:bg-stone-100 text-stone-700 text-[8.5px] font-semibold tracking-tight rounded-md border border-stone-200 transition-colors">
+                             ✓ {t}
+                           </span>
+                         ))}
+                       </div>
+                     </div>
+
+                     {/* Footer CTAs */}
+                     <div className="mt-5 pt-3.5 border-t border-natural-border/30 flex items-center justify-between gap-2">
+                       <button
+                         type="button"
+                         onClick={() => {
+                           setPolicyModalLender(rec);
+                           setIsPolicyModalOpen(true);
+                         }}
+                         className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border border-stone-200 flex items-center gap-1.5"
+                       >
+                         <Info className="w-3 h-3 text-stone-500" />
+                         <span>Policy Norms</span>
+                       </button>
+
+                       <button 
+                         onClick={() => {
+                           updateForm('selectedBank', rec);
+                           setActiveTab('loans');
+                           setLoansViewMode('apply');
+                           if (formData.loanAmount > 0) {
+                             setLoanStep(8);
+                           } else {
+                             setLoanStep(1);
+                           }
+                         }}
+                         className="bg-[#10B981] hover:bg-[#0e9f6e] text-white rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-md active:scale-95 duration-200"
+                       >
+                         Select Offer <ArrowRight className="w-3 h-3" />
+                       </button>
+                     </div>
+                  </div>
+                ))}
+             </div>
+           )}
 
            {/* Floating Compare Docking Bar */}
            {selectedCompareBanks.length > 0 && (
@@ -5557,170 +5965,34 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
              </motion.div>
            )}
 
-           {/* Side-by-Side Comparison Modal Overlay */}
-           <AnimatePresence>
-             {isCompareOpen && (
-               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
-                 <motion.div 
-                   initial={{ opacity: 0 }}
-                   animate={{ opacity: 1 }}
-                   exit={{ opacity: 0 }}
-                   onClick={() => setIsCompareOpen(false)}
-                   className="absolute inset-0 bg-natural-sage/30 backdrop-blur-md"
-                 />
-                 <motion.div 
-                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                   exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                   className="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[40px] shadow-huge flex flex-col border border-slate-100"
-                 >
-                   {/* Modal Header */}
-                   <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                     <div>
-                       <h2 className="text-2xl font-black text-natural-sage tracking-tight italic">Compare Mortgage Offers.</h2>
-                       <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Side-by-side feature and rating matrix</p>
-                     </div>
-                     <button 
-                       onClick={() => setIsCompareOpen(false)}
-                       className="p-3 bg-white border border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors text-slate-400 hover:text-natural-sage shadow-sm cursor-pointer"
-                     >
-                       <ArrowRight className="w-5 h-5 rotate-180" />
-                     </button>
-                   </div>
-
-                   {/* Modal Content */}
-                   <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-stretch">
-                       {/* Label names Column (hidden on mobile, headers rendered inline mobile) */}
-                       <div className="hidden md:flex flex-col justify-between py-6 text-left border-r border-slate-100 pr-4">
-                         <div className="h-16 flex items-center">
-                           <span className="text-xs font-black uppercase tracking-widest text-slate-400">Lender Profile</span>
-                         </div>
-                         <div className="space-y-12">
-                           <div className="py-2 border-b border-slate-100">
-                             <span className="text-xs font-black text-natural-sage">Match Rate</span>
-                           </div>
-                           <div className="py-2 border-b border-slate-100">
-                             <span className="text-xs font-black text-natural-sage">Starting ROI</span>
-                           </div>
-                           <div className="py-2 border-b border-slate-100">
-                             <span className="text-xs font-black text-natural-sage">Processing time</span>
-                           </div>
-                           <div className="py-2 border-b border-slate-100">
-                             <span className="text-xs font-black text-natural-sage">Trust Score</span>
-                           </div>
-                           <div className="py-2 border-b border-slate-100">
-                             <span className="text-xs font-black text-natural-sage">Key Benefits</span>
-                           </div>
-                         </div>
-                       </div>
-
-                       {/* Compare Lenders */}
-                       {selectedCompareBanks.map((bankName) => {
-                         const bank = getBankRecommendations().find(b => b.name === bankName);
-                         if (!bank) return null;
-
-                         return (
-                           <div key={bank.name} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-8 text-center md:text-left relative group hover:border-[#10B981]/30 transition-all">
-                             {/* Lender Card Header */}
-                             <div className="space-y-3">
-                               <div className="w-12 h-12 bg-white border border-slate-100 text-natural-sage font-black text-sm uppercase tracking-wider rounded-2xl flex items-center justify-center shadow-inner mx-auto md:mx-0">
-                                 {bank.name.substring(0, 2)}
-                               </div>
-                               <div>
-                                 <h4 className="text-lg font-black text-natural-sage tracking-tight">{bank.name}</h4>
-                                 <span className="inline-flex items-center gap-1.5 mt-0.5 text-natural-muted font-bold text-[10px]">
-                                   <Star className="w-3.5 h-3.5 fill-yellow-400 stroke-yellow-400" />
-                                   <span>{(bank.avgRating || bank.rating).toFixed(1)}</span>
-                                 </span>
-                               </div>
-                             </div>
-
-                             {/* Comparison categories */}
-                             <div className="space-y-6 flex-1 pt-4 border-t border-slate-200/50">
-                               {/* Match */}
-                               <div className="space-y-1 block md:py-2 md:border-b border-slate-100">
-                                 <span className="md:hidden text-[9px] font-black text-slate-400 uppercase tracking-widest block">Match Rate</span>
-                                 <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-emerald-100 inline-block font-sans">
-                                   {bank.finalScore || bank.score || 90}% Match
-                                 </span>
-                               </div>
-
-                               {/* Rate */}
-                               <div className="space-y-1 block md:py-2 md:border-b border-slate-100">
-                                 <span className="md:hidden text-[9px] font-black text-slate-400 uppercase tracking-widest block">Starting ROI</span>
-                                 <span className="text-xl sm:text-2xl font-black text-natural-sage">{bank.rate} <span className="text-xs font-bold text-slate-400">P.A.</span></span>
-                               </div>
-
-                               {/* Speed */}
-                               <div className="space-y-1 block md:py-2 md:border-b border-slate-100">
-                                 <span className="md:hidden text-[9px] font-black text-slate-400 uppercase tracking-widest block">Processing time</span>
-                                 <span className="text-xs font-bold text-slate-600">{bank.processingTime}</span>
-                               </div>
-
-                               {/* Trust */}
-                               <div className="space-y-1 block md:py-2 md:border-b border-slate-100">
-                                 <span className="md:hidden text-[9px] font-black text-slate-400 uppercase tracking-widest block">Trust Score</span>
-                                 <span className="text-xs font-bold text-slate-600">{(bank.avgRating || bank.rating).toFixed(1)} / 5.0</span>
-                               </div>
-
-                               {/* Highlights list */}
-                               <div className="space-y-1.5 block md:py-2">
-                                 <span className="md:hidden text-[9px] font-black text-slate-400 uppercase tracking-widest block">Key Benefits</span>
-                                 <div className="flex flex-col gap-1.5">
-                                   {bank.features.map(f => (
-                                     <span key={f} className="px-2 py-0.5 bg-white text-natural-sage text-[9.5px] font-semibold tracking-tight rounded-md border border-slate-100 inline-block text-center md:text-left shadow-sm">
-                                       ✓ {f}
-                                     </span>
-                                   ))}
-                                 </div>
-                               </div>
-                             </div>
-
-                             {/* select action */}
-                             <div className="pt-4 border-t border-slate-100 flex justify-center">
-                               <button 
-                                 onClick={() => {
-                                   updateForm('selectedBank', bank);
-                                   setIsCompareOpen(false);
-                                   setActiveTab('loans');
-                                   setLoansViewMode('apply');
-                                   if (formData.loanAmount > 0) {
-                                     setLoanStep(8);
-                                   } else {
-                                     setLoanStep(1);
-                                   }
-                                 }}
-                                 className="w-full bg-[#10B981] text-white py-3 rounded-xl font-sans font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-emerald-600 transition-all cursor-pointer"
-                               >
-                                 Choose {bank.name}
-                               </button>
-                             </div>
-                           </div>
-                         );
-                       })}
-                     </div>
-                   </div>
-
-                   {/* Modal Footer */}
-                   <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                     <div>
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Clear decision certainty</p>
-                       <p className="text-xs text-natural-sage font-bold italic">Select the lender that best complements your ideal criteria.</p>
-                     </div>
-                     <button 
-                       onClick={() => setIsCompareOpen(false)}
-                       className="px-6 py-4 bg-white border border-slate-200 text-slate-500 hover:text-slate-700 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all cursor-pointer"
-                     >
-                       Close Compare
-                     </button>
-                   </div>
-                 </motion.div>
-               </div>
-             )}
-           </AnimatePresence>
+           {/* Side-by-Side Comparison Matrix Modal with Total Interest Difference */}
+           <OfferComparisonMatrixModal
+             isOpen={isCompareOpen}
+             onClose={() => setIsCompareOpen(false)}
+             selectedBanks={selectedCompareBanks
+               .map(bankName => getBankRecommendations().find(b => b.name === bankName))
+               .filter(Boolean) as any[]
+             }
+             defaultLoanAmount={formData.loanAmount || 4500000}
+             defaultTenureYears={Number(formData.tenure) || 20}
+             onSelectBank={(bank) => {
+               updateForm('selectedBank', bank);
+               setIsCompareOpen(false);
+               setActiveTab('loans');
+               setLoansViewMode('apply');
+               if (formData.loanAmount > 0) {
+                 setLoanStep(8);
+               } else {
+                 setLoanStep(1);
+               }
+             }}
+             onRemoveBank={(bankName) => {
+               setSelectedCompareBanks(prev => prev.filter(n => n !== bankName));
+             }}
+           />
         </div>
       );
+    })();
       case 'admin': 
         if (!isAdminAuthenticated) {
           return (
@@ -5832,6 +6104,24 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
             onSubmit={handleRatingSubmit}
           />
         )}
+
+        {/* Global Institutional Credit Policy & Underwriting Norms Modal */}
+        <LenderPolicyModal
+          isOpen={isPolicyModalOpen}
+          onClose={() => setIsPolicyModalOpen(false)}
+          lender={policyModalLender}
+          onApply={(lender) => {
+            updateForm('selectedBank', lender);
+            setIsPolicyModalOpen(false);
+            setActiveTab('loans');
+            setLoansViewMode('apply');
+            if (formData.loanAmount > 0) {
+              setLoanStep(8);
+            } else {
+              setLoanStep(1);
+            }
+          }}
+        />
 
         <AnimatePresence>
           {isAnalyzing && <AnalysisPortal progress={analysisProgress} />}

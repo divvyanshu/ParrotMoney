@@ -68,15 +68,21 @@ export async function getChatResponse(
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return "Our loan advisory service is currently receiving a high volume of requests. Please wait about 15-30 seconds and ask your question again. You can also click 'Lenders Excel' above or check your eligibility in the calculator.";
+      }
       const errText = await response.text();
       throw new Error(`Server returned status ${response.status}: ${errText}`);
     }
 
     const data = await response.json();
-    return data.reply;
-  } catch (error) {
+    return data.reply || "I'm ready to help! Please feel free to ask any question regarding home loan interest rates, balance transfers, or lender eligibility.";
+  } catch (error: any) {
     console.error("Gemini API Client Error:", error);
-    return "I'm sorry, I encountered a temporary connection issue. Please try submitting your query again, or let me know if you would like me to analyze a specific loan requirement.";
+    if (error?.message?.includes('429')) {
+      return "Rate limit reached. Please wait a moment and try your query again.";
+    }
+    return "I'm sorry, I encountered a temporary connection issue. Please retry your query, or let me know which bank's guidelines you would like me to summarize.";
   }
 }
 

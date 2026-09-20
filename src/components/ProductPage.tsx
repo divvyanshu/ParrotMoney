@@ -15,6 +15,7 @@ import {
 import { cn } from '../lib/utils';
 import { MortgageCalculator } from './MortgageCalculator';
 import { NEWS_ARTICLES } from './ParrotLanding';
+import { BankLogo } from './BankLogo';
 
 interface ProductDetail {
   id: string;
@@ -231,79 +232,7 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
 
   // Reusable official bank logo component using high-fidelity vector graphics
   const renderLogo = (bank: any) => {
-    // Custom beautiful vector SVG renderers for each major bank
-    if (bank.id === 'sbi-lap') {
-      return (
-        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-slate-200/60 p-1 flex items-center justify-center shrink-0 shadow-sm" title={bank.name}>
-          <svg viewBox="0 0 100 100" className="w-8 h-8 text-[#00A2E8] fill-current">
-            <circle cx="50" cy="50" r="40" />
-            <rect x="47" y="50" width="6" height="40" fill="white" />
-            <circle cx="50" cy="50" r="14" fill="white" />
-          </svg>
-        </div>
-      );
-    }
-
-    if (bank.id === 'hdfc-lap') {
-      return (
-        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#004C8F] border border-slate-200/60 p-1 flex items-center justify-center shrink-0 shadow-sm" title={bank.name}>
-          <svg viewBox="0 0 100 100" className="w-8 h-8">
-            <rect width="100" height="100" rx="16" fill="#004C8F" />
-            <rect x="30" y="30" width="40" height="40" fill="white" />
-            <rect x="45" y="15" width="10" height="70" fill="#E1191A" />
-            <rect x="15" y="45" width="70" height="10" fill="#E1191A" />
-            <rect x="35" y="35" width="30" height="30" fill="#004C8F" />
-          </svg>
-        </div>
-      );
-    }
-
-    if (bank.id === 'icici-lap') {
-      return (
-        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#7A1E1E] border border-slate-200/60 p-1 flex items-center justify-center shrink-0 shadow-sm" title={bank.name}>
-          <svg viewBox="0 0 100 100" className="w-8 h-8">
-            <rect width="100" height="100" rx="16" fill="#7A1E1E" />
-            <circle cx="50" cy="30" r="10" fill="#F58220" />
-            <path d="M40 80 C 40 50, 60 55, 60 45 L 60 80 Z" fill="#F58220" />
-          </svg>
-        </div>
-      );
-    }
-
-    if (bank.id === 'axis-lap') {
-      return (
-        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#8C0B3C] border border-slate-200/60 p-1 flex items-center justify-center shrink-0 shadow-sm" title={bank.name}>
-          <svg viewBox="0 0 100 100" className="w-8 h-8">
-            <rect width="100" height="100" rx="16" fill="#8C0B3C" />
-            <path d="M 50 20 L 25 75 L 42 75 L 50 50 L 58 75 L 75 75 Z" fill="white" />
-            <path d="M 50 35 L 38 65 L 62 65 Z" fill="#8C0B3C" />
-            <circle cx="50" cy="55" r="6" fill="white" />
-          </svg>
-        </div>
-      );
-    }
-
-    if (bank.id === 'kotak-lap') {
-      return (
-        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#E1191A] border border-slate-200/60 p-1 flex items-center justify-center shrink-0 shadow-sm" title={bank.name}>
-          <svg viewBox="0 0 100 100" className="w-8 h-8">
-            <rect width="100" height="100" rx="16" fill="#E1191A" />
-            <circle cx="50" cy="50" r="35" fill="#004C8F" />
-            <path d="M35 30 L45 30 L45 70 L35 70 Z" fill="white" />
-            <path d="M45 50 L65 30 L75 30 L55 50 L75 70 L65 70 Z" fill="white" />
-          </svg>
-        </div>
-      );
-    }
-
-    // Default beautiful branded fallback in case of unspecified/new banks
-    return (
-      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-slate-200/60 p-1 flex items-center justify-center shrink-0 shadow-sm">
-        <div className={cn("absolute inset-0 flex items-center justify-center text-white text-[9px] font-black tracking-tighter leading-none rounded-xl", bank.fallbackColor)}>
-          {bank.fallbackText}
-        </div>
-      </div>
-    );
+    return <BankLogo bank={bank} size="md" />;
   };
 
   const productBaseRoi = data.baseRoi || 8.95;
@@ -313,9 +242,8 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
     {
       id: 'sbi-lap',
       name: 'State Bank of India',
-      logoUrl: '/logos/sbi.svg',
       baseRoi: Number(productBaseRoi.toFixed(2)),
-      maxRoi: Number((productBaseRoi + 1.55).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.45).toFixed(2)),
       pfPercent: 0.35,
       pfMin: 5000,
       pfMax: 25000,
@@ -323,15 +251,14 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
       pfSub: 'whichever is lower',
       maxTenure: maxProductTenure,
       maxAmount: 150000000,
-      fallbackColor: 'bg-[#00A2E8]',
+      fallbackColor: 'bg-[#0072bc]',
       fallbackText: 'SBI'
     },
     {
       id: 'hdfc-lap',
       name: 'HDFC Bank Ltd',
-      logoUrl: 'https://logo.clearbit.com/hdfcbank.com',
-      baseRoi: Number((productBaseRoi + 0.20).toFixed(2)),
-      maxRoi: Number((productBaseRoi + 1.85).toFixed(2)),
+      baseRoi: Number((productBaseRoi + 0.15).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.75).toFixed(2)),
       pfPercent: 0.50,
       pfMin: 7500,
       pfMax: 50000,
@@ -345,25 +272,23 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
     {
       id: 'icici-lap',
       name: 'ICICI Bank Ltd',
-      logoUrl: 'https://logo.clearbit.com/icicibank.com',
-      baseRoi: Number((productBaseRoi + 0.25).toFixed(2)),
-      maxRoi: Number((productBaseRoi + 2.05).toFixed(2)),
-      pfPercent: 1.00,
+      baseRoi: Number((productBaseRoi + 0.20).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.95).toFixed(2)),
+      pfPercent: 0.50,
       pfMin: 10000,
       pfMax: 100000,
-      pfLabel: '1.00% or ₹100k',
+      pfLabel: '0.50% or ₹100k',
       pfSub: 'whichever is lower',
       maxTenure: maxProductTenure,
       maxAmount: 100000000,
-      fallbackColor: 'bg-[#7A1E1E]',
+      fallbackColor: 'bg-[#B02A30]',
       fallbackText: 'ICICI'
     },
     {
       id: 'axis-lap',
       name: 'Axis Bank Ltd',
-      logoUrl: 'https://logo.clearbit.com/axisbank.com',
       baseRoi: Number((productBaseRoi + 0.20).toFixed(2)),
-      maxRoi: Number((productBaseRoi + 2.30).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 2.10).toFixed(2)),
       pfPercent: 0.75,
       pfMin: 8000,
       pfMax: 75000,
@@ -371,15 +296,14 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
       pfSub: 'whichever is lower',
       maxTenure: maxProductTenure,
       maxAmount: 120000000,
-      fallbackColor: 'bg-[#8C0B3C]',
+      fallbackColor: 'bg-[#97144D]',
       fallbackText: 'AXIS'
     },
     {
       id: 'kotak-lap',
       name: 'Kotak Mahindra Bank',
-      logoUrl: '/logos/kotak_icon.svg',
       baseRoi: Number((productBaseRoi + 0.05).toFixed(2)),
-      maxRoi: Number((productBaseRoi + 1.75).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.65).toFixed(2)),
       pfPercent: 0.50,
       pfMin: 6000,
       pfMax: 40000,
@@ -387,8 +311,113 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
       pfSub: 'whichever is lower',
       maxTenure: maxProductTenure,
       maxAmount: 80000000,
-      fallbackColor: 'bg-[#E1191A]',
+      fallbackColor: 'bg-[#003974]',
       fallbackText: 'KOTAK'
+    },
+    {
+      id: 'bob-lap',
+      name: 'Bank of Baroda',
+      baseRoi: Number((productBaseRoi + 0.10).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.50).toFixed(2)),
+      pfPercent: 0.35,
+      pfMin: 5000,
+      pfMax: 20000,
+      pfLabel: '0.35% or ₹20k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 100000000,
+      fallbackColor: 'bg-[#F26522]',
+      fallbackText: 'BOB'
+    },
+    {
+      id: 'federal-lap',
+      name: 'Federal Bank',
+      baseRoi: Number((productBaseRoi + 0.25).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.80).toFixed(2)),
+      pfPercent: 0.50,
+      pfMin: 5000,
+      pfMax: 30000,
+      pfLabel: '0.50% or ₹30k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 75000000,
+      fallbackColor: 'bg-[#004cbe]',
+      fallbackText: 'FED'
+    },
+    {
+      id: 'union-lap',
+      name: 'Union Bank of India',
+      baseRoi: Number((productBaseRoi + 0.15).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.60).toFixed(2)),
+      pfPercent: 0.35,
+      pfMin: 5000,
+      pfMax: 25000,
+      pfLabel: '0.35% or ₹25k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 90000000,
+      fallbackColor: 'bg-[#00579c]',
+      fallbackText: 'UBI'
+    },
+    {
+      id: 'pnb-lap',
+      name: 'PNB Housing Finance',
+      baseRoi: Number((productBaseRoi + 0.40).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 2.20).toFixed(2)),
+      pfPercent: 0.50,
+      pfMin: 7500,
+      pfMax: 50000,
+      pfLabel: '0.50% or ₹50k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 100000000,
+      fallbackColor: 'bg-[#A21D21]',
+      fallbackText: 'PNB'
+    },
+    {
+      id: 'lic-lap',
+      name: 'LIC Housing Finance',
+      baseRoi: Number((productBaseRoi + 0.20).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.70).toFixed(2)),
+      pfPercent: 0.35,
+      pfMin: 5000,
+      pfMax: 30000,
+      pfLabel: '0.35% or ₹30k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 150000000,
+      fallbackColor: 'bg-[#004A8F]',
+      fallbackText: 'LIC'
+    },
+    {
+      id: 'bajaj-lap',
+      name: 'Bajaj Housing Finance',
+      baseRoi: Number((productBaseRoi + 0.25).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.85).toFixed(2)),
+      pfPercent: 0.50,
+      pfMin: 6000,
+      pfMax: 45000,
+      pfLabel: '0.50% or ₹45k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 120000000,
+      fallbackColor: 'bg-[#004C97]',
+      fallbackText: 'BAJAJ'
+    },
+    {
+      id: 'tata-lap',
+      name: 'Tata Capital',
+      baseRoi: Number((productBaseRoi + 0.30).toFixed(2)),
+      maxRoi: Number((productBaseRoi + 1.90).toFixed(2)),
+      pfPercent: 0.50,
+      pfMin: 7500,
+      pfMax: 50000,
+      pfLabel: '0.50% or ₹50k',
+      pfSub: 'whichever is lower',
+      maxTenure: maxProductTenure,
+      maxAmount: 85000000,
+      fallbackColor: 'bg-[#005696]',
+      fallbackText: 'TATA'
     }
   ];
 
@@ -1811,6 +1840,54 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
 
                         {/* Comparative Matrix - Scrollable Area */}
                         <div className="p-6 md:p-8 overflow-y-auto flex-1 custom-scrollbar">
+                          {/* Pairwise Interest Difference Banner when exactly 2 banks selected */}
+                          {(() => {
+                            const comparedLapBanks = lapBanks.filter((bank) => selectedBanks.includes(bank.name));
+                            if (comparedLapBanks.length !== 2) return null;
+                            const b1 = comparedLapBanks[0];
+                            const b2 = comparedLapBanks[1];
+                            const emi1 = calculateEmi(lapAmount, b1.baseRoi, lapTermInYears);
+                            const emi2 = calculateEmi(lapAmount, b2.baseRoi, lapTermInYears);
+                            const int1 = Math.max(0, (emi1 * lapTermInMonths) - lapAmount);
+                            const int2 = Math.max(0, (emi2 * lapTermInMonths) - lapAmount);
+                            const diff = Math.abs(int1 - int2);
+                            const isSame = diff === 0;
+                            const cheaper = int1 < int2 ? b1 : b2;
+                            const costlier = int1 < int2 ? b2 : b1;
+                            const maxInt = Math.max(int1, int2);
+                            const pct = maxInt > 0 ? ((diff / maxInt) * 100).toFixed(1) : '0.0';
+
+                            return (
+                              <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold shrink-0">
+                                    ₹
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-black uppercase tracking-wider text-emerald-800">
+                                      Total Interest Payable Difference Over Tenure
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-800 mt-0.5">
+                                      {isSame ? (
+                                        <span>Both lenders incur identical total interest charges over {lapTerm} {lapTermUnit}.</span>
+                                      ) : (
+                                        <span>
+                                          Choosing <strong className="text-emerald-700 font-black">{cheaper.name}</strong> over {costlier.name} saves{' '}
+                                          <strong className="text-emerald-700 font-black">₹{Math.round(diff).toLocaleString('en-IN')}</strong> ({pct}%) in total interest over {lapTerm} {lapTermUnit}.
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {!isSame && (
+                                  <div className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-black self-start sm:self-auto shrink-0 shadow-xs">
+                                    Save ₹{Math.round(diff).toLocaleString('en-IN')}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
                           <div className="overflow-x-auto">
                             <table className="w-full border-collapse text-left min-w-[700px]">
                               <thead>
@@ -1886,6 +1963,49 @@ export function ProductPage({ productId: initialProductId, onBack, onApply, onAr
                                       );
                                     })}
                                 </tr>
+
+                                {/* Pairwise Total Interest Difference Row (When 2 banks selected) */}
+                                {lapBanks.filter((bank) => selectedBanks.includes(bank.name)).length === 2 && (
+                                  <tr className="bg-emerald-50/60">
+                                    <td className="py-4.5 pr-4 font-bold text-emerald-900 text-xs uppercase tracking-wider">
+                                      <div className="flex items-center gap-1.5">
+                                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Total Interest Difference</span>
+                                      </div>
+                                    </td>
+                                    {(() => {
+                                      const cBanks = lapBanks.filter((bank) => selectedBanks.includes(bank.name));
+                                      const emi0 = calculateEmi(lapAmount, cBanks[0].baseRoi, lapTermInYears);
+                                      const emi1 = calculateEmi(lapAmount, cBanks[1].baseRoi, lapTermInYears);
+                                      const int0 = Math.max(0, (emi0 * lapTermInMonths) - lapAmount);
+                                      const int1 = Math.max(0, (emi1 * lapTermInMonths) - lapAmount);
+                                      const diff = Math.abs(int0 - int1);
+                                      const isSame = diff === 0;
+
+                                      return cBanks.map((bank, idx) => {
+                                        const thisInt = idx === 0 ? int0 : int1;
+                                        const otherInt = idx === 0 ? int1 : int0;
+                                        const isCheaper = thisInt < otherInt;
+
+                                        return (
+                                          <td key={bank.name} className="py-4.5 px-4 text-center border-l border-emerald-100">
+                                            {isSame ? (
+                                              <span className="text-xs font-semibold text-slate-500">Same Rate</span>
+                                            ) : isCheaper ? (
+                                              <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-100/90 px-3 py-1 rounded-xl">
+                                                Saves ₹{Math.round(diff).toLocaleString('en-IN')}
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-xl">
+                                                +₹{Math.round(diff).toLocaleString('en-IN')} Extra
+                                              </span>
+                                            )}
+                                          </td>
+                                        );
+                                      });
+                                    })()}
+                                  </tr>
+                                )}
 
                                 {/* Total Repayment Row */}
                                 <tr>

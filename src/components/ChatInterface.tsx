@@ -3,13 +3,16 @@ import {
   Send, User as UserIcon, Bot, X, MessageSquare, Mic, MicOff, 
   Volume2, VolumeX, Loader2, Paperclip, Lock, Shield, FileText, 
   Download, UploadCloud, ArrowRight, CheckCircle2, Sparkles,
-  Search, ShieldCheck, Edit3, ChevronRight, HelpCircle
+  Search, ShieldCheck, Edit3, ChevronRight, HelpCircle,
+  FileSpreadsheet, ExternalLink, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getChatResponse, logCustomerLead, UserContext } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 import { Logo } from './Logo';
+import { downloadLendersExcel } from '../utils/excelDownloader';
+import { LendersGuidelinesModal } from './LendersGuidelinesModal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -64,10 +67,11 @@ export function getContextualChips(messages: Message[]): { label: string; query:
   }
 
   return [
+    { label: "📥 40+ Lenders Excel", query: "Can you provide the complete guidelines of 40+ Banks, SFBs, and NBFCs for Home Loan and Loan Against Property (LAP) with the Excel download?" },
     { label: "Compare Bank Rates", query: "Compare SBI vs HDFC Bank for a ₹75 Lakh home loan over 20 years with all fees." },
+    { label: "SFBs & Affordable HFCs", query: "Which Small Finance Banks and Affordable HFCs (like AU SFB, Aadhar, Aavas, Home First) offer loans for self-employed or semi-formal income?" },
     { label: "Calculate Loan Limit", query: "Calculate my maximum eligible loan based on my monthly salary and obligations." },
-    { label: "Balance Transfer", query: "How much can I save by doing a balance transfer on my existing home loan?" },
-    { label: "Required Documents", query: "What basic documents do I need for home loan approval?" }
+    { label: "Required Documents", query: "What basic documents do I need for home loan and LAP approval?" }
   ];
 }
 
@@ -108,6 +112,15 @@ export function ChatInterface() {
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docType, setDocType] = useState('paystub');
   const [uploadedDocs, setUploadedDocs] = useState<any[]>([]);
+  const [isGuidelinesModalOpen, setIsGuidelinesModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
+
+  const showToast = (text: string, type: 'error' | 'success' | 'info' = 'info') => {
+    setToastMessage({ type, text });
+    setTimeout(() => {
+      setToastMessage(prev => prev?.text === text ? null : prev);
+    }, 4500);
+  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -130,6 +143,22 @@ export function ChatInterface() {
       fetchUploadedDocs();
     }
   }, [isOpen]);
+
+  // Keyboard shortcut: Escape to close drawer or upload panel
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showUploadPanel) {
+          setShowUploadPanel(false);
+        } else {
+          setIsOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, showUploadPanel]);
 
   // Global event listener to trigger chatbot from other components & synchronize customer
   useEffect(() => {
@@ -405,7 +434,7 @@ export function ChatInterface() {
       setIsRecording(true);
     } catch (error) {
       console.error('Microphone error:', error);
-      alert('Could not access microphone. Please check browser microphone permissions.');
+      showToast('Could not access microphone. Please check browser microphone permissions.', 'error');
     }
   };
 
@@ -456,7 +485,7 @@ export function ChatInterface() {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      alert("Document file size exceeds the 10MB limit.");
+      showToast("Document file size exceeds the 10MB limit.", 'error');
       return;
     }
 
@@ -503,7 +532,7 @@ export function ChatInterface() {
       }
     } catch (err: any) {
       console.error("Secure upload error:", err);
-      alert(`Secure upload failed: ${err.message}`);
+      showToast(`Secure upload failed: ${err.message}`, 'error');
     } finally {
       setUploadingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -546,28 +575,27 @@ export function ChatInterface() {
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm text-white">AI</h3>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-1.5 py-0.5 rounded-md font-medium">Online</span>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-semibold text-sm text-white">AI</h3>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[10px] text-emerald-400 font-medium">Connected</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 font-normal truncate max-w-[200px]">
-                    {customer ? `${customer.name} • +91 ${customer.phone}` : "Personal Loan Guide"}
-                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
-                {customer && (
-                  <button
-                    type="button"
-                    title="Edit Contact Info"
-                    onClick={() => setShowEditCustomer(!showEditCustomer)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsGuidelinesModalOpen(true)}
+                  className="px-2 py-1 bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 hover:text-white rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                  title="View 43+ Lenders Home Loan & LAP Guidelines (.xlsx)"
+                  aria-label="Lender Guidelines Excel"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Lenders Excel</span>
+                </button>
+
                 <button 
                   type="button"
                   title={voiceEnabled ? "Mute Voice" : "Enable Voice"}
@@ -576,86 +604,116 @@ export function ChatInterface() {
                     "p-1.5 rounded-lg transition-all cursor-pointer",
                     voiceEnabled ? "text-emerald-400 hover:bg-white/10" : "text-slate-400 hover:bg-white/10"
                   )}
+                  aria-label={voiceEnabled ? "Mute Voice" : "Enable Voice"}
                 >
-                  {voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
                 <button 
                   type="button"
                   onClick={() => setIsOpen(false)} 
                   className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  aria-label="Close Chat"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* PRE-REQUISITE GATE: Customer Name, Mobile & Email Required */}
+            {/* In-app Toast Banner */}
+            <AnimatePresence>
+              {toastMessage && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className={cn(
+                    "px-4 py-2 text-xs flex items-center justify-between gap-2 z-50 border-b",
+                    toastMessage.type === 'error' ? "bg-rose-50 border-rose-200 text-rose-800" :
+                    toastMessage.type === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+                    "bg-slate-100 border-slate-200 text-slate-800"
+                  )}
+                >
+                  <span className="font-medium truncate">{toastMessage.text}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setToastMessage(null)}
+                    className="p-0.5 hover:bg-black/5 rounded cursor-pointer shrink-0"
+                    aria-label="Dismiss notification"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* PRE-REQUISITE GATE: Name, Mobile & Email */}
             {(!customer || showEditCustomer) ? (
-              <div className="flex-1 overflow-y-auto p-6 flex flex-col justify-between bg-slate-50">
-                <div className="space-y-5">
+              <div className="flex-1 overflow-y-auto p-6 sm:p-7 flex flex-col justify-between bg-slate-50">
+                <div className="space-y-6">
                   <div className="space-y-1">
-                    <h4 className="text-base font-semibold text-slate-900 tracking-tight">
-                      Welcome 👋
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold text-slate-900 tracking-tight">AI</span>
+                      <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-medium">Advisory</span>
+                    </div>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Please share your details to get personalized bank rates and loan recommendations.
+                      Enter your details to get personalized rates, eligibility checks, and loan comparisons.
                     </p>
                   </div>
 
-                  <form onSubmit={handleGateSubmit} className="space-y-3.5">
-                    {/* 1. Name comes first */}
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-slate-700 block">
+                  <form onSubmit={handleGateSubmit} className="space-y-4">
+                    {/* 1. Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 block">
                         Full Name
                       </label>
                       <input 
                         type="text"
                         required
-                        placeholder="Your name"
+                        placeholder="e.g. Rahul Sharma"
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
-                        className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-slate-900 placeholder:text-slate-400"
+                        className="w-full text-sm bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 transition-all text-slate-900 placeholder:text-slate-400 shadow-2xs"
                       />
                     </div>
 
-                    {/* 2. Mobile No. comes second */}
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-slate-700 block">
+                    {/* 2. Mobile Number */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 block">
                         Mobile Number
                       </label>
-                      <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all">
-                        <span className="px-3 py-2.5 bg-slate-50 border-r border-slate-200 text-xs text-slate-500 select-none flex items-center font-medium">
+                      <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/15 transition-all shadow-2xs">
+                        <span className="px-3.5 py-3 bg-slate-50 border-r border-slate-200 text-sm text-slate-600 select-none flex items-center font-medium">
                           +91
                         </span>
                         <input 
                           type="tel"
                           required
                           maxLength={10}
-                          placeholder="10-digit mobile number"
+                          placeholder="9876543210"
                           value={phoneInput}
                           onChange={(e) => setPhoneInput(e.target.value)}
-                          className="w-full text-xs px-3.5 py-2.5 outline-none bg-transparent text-slate-900 placeholder:text-slate-400 tracking-wide"
+                          className="w-full text-sm px-4 py-3 outline-none bg-transparent text-slate-900 placeholder:text-slate-400 tracking-wider font-mono"
                         />
                       </div>
                     </div>
 
-                    {/* 3. Email ID comes third */}
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-slate-700 block">
+                    {/* 3. Email Address */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 block">
                         Email Address
                       </label>
                       <input 
                         type="email"
                         required
-                        placeholder="you@example.com"
+                        placeholder="rahul@example.com"
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
-                        className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-slate-900 placeholder:text-slate-400"
+                        className="w-full text-sm bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 transition-all text-slate-900 placeholder:text-slate-400 shadow-2xs"
                       />
                     </div>
 
                     {gateError && (
-                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
                         {gateError}
                       </div>
                     )}
@@ -663,17 +721,17 @@ export function ChatInterface() {
                     <button
                       type="submit"
                       disabled={isSubmittingGate}
-                      className="w-full py-2.5 bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-2"
+                      className="w-full py-3.5 bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] disabled:opacity-60 cursor-pointer mt-2"
                     >
                       {isSubmittingGate ? (
                         <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                          <span>Starting...</span>
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                          <span>Connecting...</span>
                         </>
                       ) : (
                         <>
                           <span>Start</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                          <ArrowRight className="w-4 h-4 text-emerald-400" />
                         </>
                       )}
                     </button>
@@ -727,7 +785,71 @@ export function ChatInterface() {
                           : "bg-white text-slate-800 rounded-tl-none border border-slate-200/80"
                       )}>
                         <div className="markdown-body">
-                          <ReactMarkdown>
+                          <ReactMarkdown
+                            components={{
+                              a: ({ href, children }) => {
+                                const isExcel = href && (href.includes(".xlsx") || href.includes("lender-guidelines"));
+                                if (isExcel) {
+                                  return (
+                                    <div className="my-2 p-2.5 bg-emerald-50/90 border border-emerald-200/80 rounded-xl space-y-2">
+                                      <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-950">
+                                        <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                                        <span>43 Lenders Home Loan & LAP Guidelines (Excel)</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            downloadLendersExcel();
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                                          title="Download .xlsx to device"
+                                        >
+                                          <Download className="w-3 h-3" />
+                                          <span>Download (.xlsx)</span>
+                                        </button>
+
+                                        <a
+                                          href="/api/download-lender-guidelines-excel"
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-medium border border-slate-300 transition-all cursor-pointer"
+                                          title="Open in new tab to download directly"
+                                        >
+                                          <ExternalLink className="w-3 h-3 text-slate-500" />
+                                          <span>Direct Link</span>
+                                        </a>
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            setIsGuidelinesModalOpen(true);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                                          title="View directory and comparison table on screen"
+                                        >
+                                          <Eye className="w-3 h-3 text-emerald-700" />
+                                          <span>View Table</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <a 
+                                    href={href} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-emerald-600 hover:underline font-medium"
+                                  >
+                                    {children}
+                                  </a>
+                                );
+                              }
+                            }}
+                          >
                             {m.content}
                           </ReactMarkdown>
                         </div>
@@ -879,30 +1001,23 @@ export function ChatInterface() {
                 </AnimatePresence>
 
                 {/* Minimalist Input Console */}
-                <div className="p-3 bg-white border-t border-slate-200/80 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
-                    <button 
-                      type="button"
-                      onClick={() => setRecognitionLanguage(recognitionLanguage === 'en-IN' ? 'hi-IN' : 'en-IN')}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-200/60 rounded-md text-[10px] font-medium text-slate-600 transition-colors"
-                    >
-                      {recognitionLanguage === 'en-IN' ? 'English' : 'हिंदी (Hindi)'}
-                    </button>
-
+                <div className="p-3 bg-white border-t border-slate-100">
+                  <form onSubmit={handleSend} className="flex gap-2 items-center">
                     <button
                       type="button"
                       onClick={() => setShowUploadPanel(!showUploadPanel)}
                       className={cn(
-                        "text-[11px] font-medium flex items-center gap-1 transition-colors",
-                        showUploadPanel ? "text-emerald-700" : "text-slate-500 hover:text-slate-800"
+                        "p-2.5 rounded-xl transition-all border cursor-pointer shrink-0",
+                        showUploadPanel 
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-300" 
+                          : "bg-slate-50 text-slate-500 hover:text-slate-800 border-slate-200 hover:bg-slate-100"
                       )}
+                      title="Upload documents (Pay stubs, bank statements, KYC)"
+                      aria-label="Upload documents"
                     >
-                      <Paperclip className="w-3 h-3" />
-                      <span>Documents ({uploadedDocs.length})</span>
+                      <Paperclip className="w-3.5 h-3.5" />
                     </button>
-                  </div>
 
-                  <form onSubmit={handleSend} className="flex gap-2 items-center">
                     <div className="flex-1 relative flex items-center">
                       <input
                         id="chat-input"
@@ -922,6 +1037,7 @@ export function ChatInterface() {
                           isRecording ? "text-rose-600" : "text-slate-400 hover:text-slate-700"
                         )}
                         title={isRecording ? "Stop Recording" : "Voice input"}
+                        aria-label={isRecording ? "Stop Recording" : "Voice input"}
                       >
                         {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
                       </button>
@@ -932,7 +1048,8 @@ export function ChatInterface() {
                       type="submit"
                       disabled={!input.trim() || isLoading}
                       className="p-2.5 bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-xl disabled:opacity-30 transition-all active:scale-95 shadow-xs cursor-pointer shrink-0"
-                      title="Send"
+                      title="Send message"
+                      aria-label="Send message"
                     >
                       <Send className="w-3.5 h-3.5 text-emerald-400" />
                     </button>
@@ -943,6 +1060,11 @@ export function ChatInterface() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LendersGuidelinesModal 
+        isOpen={isGuidelinesModalOpen} 
+        onClose={() => setIsGuidelinesModalOpen(false)} 
+      />
     </>
   );
 }
