@@ -2724,16 +2724,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
     coBorrowerMultiplier: 1.45,
     salaryMatchBonus: 15
   });
-  const { profile, user, continueAsGuest } = useAuth();
+  const { profile, user, continueAsGuest, loginWithGoogle } = useAuth();
 
   // Retrieve sheets token and algorithm params
   React.useEffect(() => {
-    const cachedToken = localStorage.getItem('parrot_sheets_access_token');
-    if (cachedToken) {
-      setSheetAccessToken(cachedToken);
-      setIsSheetsConnected(true);
-    }
-
     const cachedParams = localStorage.getItem('parrot_algorithm_params');
     if (cachedParams) {
       try {
@@ -3320,7 +3314,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
       if (credential?.accessToken) {
         setSheetAccessToken(credential.accessToken);
         setIsSheetsConnected(true);
-        localStorage.setItem('parrot_sheets_access_token', credential.accessToken);
+
         console.log("Successfully retrieved in-memory token for Google Sheets logging!");
       } else {
         throw new Error("Ensure Google Popups are permitted and scopes are accepted.");
@@ -5991,16 +5985,14 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
         </div>
       );
     })();
-      case 'admin': 
-        if (!isAdminAuthenticated) {
+      case 'admin':
+        if (profile?.role !== 'admin') {
           return (
-            <LoginPage 
+            <LoginPage
               initialMode="admin"
               onBack={() => setActiveTab('dashboard')}
-              onLoginSuccess={() => {
-                setIsAdminAuthenticated(true);
-                localStorage.setItem('parrot_admin_auth', 'true');
-              }}
+              onGoogleSignIn={loginWithGoogle}
+              onLoginSuccess={() => setActiveTab('admin')}
             />
           );
         }
