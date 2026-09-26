@@ -42,53 +42,12 @@ export function LoginPage({
 
   const handleCustomerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerInput.trim()) {
-      setCustomerError('Please enter a valid mobile number or email address');
-      return;
-    }
-    setCustomerError('');
-    setIsCustomerLoading(true);
-
-    try {
-      if (!otpSent && /^\d{10}$/.test(customerInput.trim())) {
-        // Mobile number simulation: show OTP step for realism
-        setOtpSent(true);
-        setIsCustomerLoading(false);
-        return;
-      }
-      
-      if (onCustomerLoginSuccess) {
-        await onCustomerLoginSuccess(customerInput.trim());
-      }
-      if (onLoginSuccess) {
-        onLoginSuccess('customer');
-      }
-    } catch (err: any) {
-      setCustomerError(err?.message || 'Login attempt failed. Please check your credentials.');
-    } finally {
-      setIsCustomerLoading(false);
-    }
+    setCustomerError('Email/mobile sign-in is temporarily unavailable until a verified OTP provider is connected. Please use Google Sign-In or Continue as Guest.');
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.length < 4) {
-      setCustomerError('Please enter a valid 4 or 6-digit OTP');
-      return;
-    }
-    setIsCustomerLoading(true);
-    try {
-      if (onCustomerLoginSuccess) {
-        await onCustomerLoginSuccess(customerInput.trim());
-      }
-      if (onLoginSuccess) {
-        onLoginSuccess('customer');
-      }
-    } catch (err: any) {
-      setCustomerError(err?.message || 'Invalid verification code.');
-    } finally {
-      setIsCustomerLoading(false);
-    }
+    setCustomerError('OTP verification is unavailable until a verified OTP provider is connected.');
   };
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
