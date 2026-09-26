@@ -1711,7 +1711,7 @@ function AdminPortal({
   const [view, setView] = useState<'users' | 'loans' | 'banks' | 'algorithm'>('users');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const { profile } = useAuth();
-  const isAdminUser = profile?.role === 'admin' || localStorage.getItem('parrot_admin_auth') === 'true';
+  const isAdminUser = profile?.role === 'admin';
 
   // Algorithm configuration state
   const [localParams, setLocalParams] = useState(algorithmParams);
@@ -2714,9 +2714,6 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
   const [sheetAccessToken, setSheetAccessToken] = useState<string | null>(null);
   const [isSheetsConnected, setIsSheetsConnected] = useState(false);
   const [googleSheetsError, setGoogleSheetsError] = useState<string | null>(null);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('parrot_admin_auth') === 'true';
-  });
   const [algorithmParams, setAlgorithmParams] = useState({
     cibilThreshold: 700,
     cibilPenalty: 20,
@@ -2727,7 +2724,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
     coBorrowerMultiplier: 1.45,
     salaryMatchBonus: 15
   });
-  const { profile, user, loginWithEmailOrMobile } = useAuth();
+  const { profile, user, continueAsGuest } = useAuth();
 
   // Retrieve sheets token and algorithm params
   React.useEffect(() => {
@@ -3337,12 +3334,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
   const handleSubmit = async (chosenBank?: any) => {
     setIsSubmitting(true);
     try {
-      const guestId = localStorage.getItem('parrot_guest_user_id') || (() => {
-        const generated = 'guest_' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('parrot_guest_user_id', generated);
-        return generated;
-      })();
-      const uId = user ? user.uid : guestId;
+      if (!user) {
+        await continueAsGuest();
+      }
+      const uId = auth.currentUser?.uid;
+      if (!uId) {
+        throw new Error('Unable to establish a secure customer session.');
+      }
       const loanData = {
         userId: uId,
         ...formData,
@@ -6157,7 +6155,7 @@ function AuthErrorNotification() {
 }
 
 function AppContent() {
-  const { user, loading, loginWithGoogle, loginWithEmailOrMobile } = useAuth();
+  const { user, loading, loginWithGoogle, continueAsGuest } = useAuth();
   const [viewState, setViewState] = React.useState<'landing' | 'app' | 'login'>('landing');
   const [loginInitialRole, setLoginInitialRole] = React.useState<'customer' | 'admin'>('customer');
   const [initialAppTab, setInitialAppTab] = React.useState<'loans' | 'dashboard' | 'calculator' | 'recommendations' | 'admin' | 'about' | 'settings' | 'calendar' | 'workspace'>('loans');
@@ -6172,12 +6170,18 @@ function AppContent() {
     </div>
   );
 
-  const handleStartApp = (category?: string) => {
+  const handleStartApp = async (category?: string) => {
     if (category) {
       localStorage.setItem('pendingLoanCategory', category);
     }
-    setInitialAppTab('loans');
-    setViewState('app');
+
+    try {
+      await continueAsGuest();
+      setInitialAppTab('loans');
+      setViewState('app');
+    } catch (err) {
+      console.error('Could not establish guest session:', err);
+    }
   };
 
   const handleBackToLanding = () => {
