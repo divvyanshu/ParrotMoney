@@ -223,7 +223,8 @@ service cloud.firestore {
     }
 
     match /banks/{bankId} {
-      allow get, list: if isSignedIn();
+      // Lender comparison data is public; mutations remain admin-only.
+      allow get, list: if true;
       allow create, update, delete: if isAdmin()
         && isValidId(bankId)
         && isValidBank(request.resource.data);
