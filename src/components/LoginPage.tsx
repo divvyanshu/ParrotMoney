@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ShieldCheck, Lock, Mail, Phone, ArrowRight, ArrowLeft, 
-  Sparkles, CheckCircle2, AlertCircle, KeyRound, 
-  Building2, Users, FileSpreadsheet, Eye, EyeOff
+  ShieldCheck, Mail, Phone, ArrowRight, ArrowLeft,
+  Sparkles, CheckCircle2, AlertCircle,
+  Building2, Users
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Logo } from './Logo';
@@ -35,12 +35,8 @@ export function LoginPage({
   const [isCustomerLoading, setIsCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
 
-  // Admin Form State
-  const [adminEmail, setAdminEmail] = useState('admin@parrotmoney.in');
-  const [adminPasscode, setAdminPasscode] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  // Admin mode is authenticated only through the real Firebase account session.
   const [isAdminLoading, setIsAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
 
@@ -100,24 +96,24 @@ export function LoginPage({
     setAdminError('');
     setIsAdminLoading(true);
 
-    // Validate admin passcode (accept 'admin', 'parrot2026', or 'master')
-    const validPasscodes = ['admin', 'parrot2026', 'master', '123456'];
-    const entered = adminPasscode.trim().toLowerCase();
-
-    setTimeout(() => {
-      if (validPasscodes.includes(entered)) {
-        localStorage.setItem('parrot_admin_auth', 'true');
-        if (onAdminLoginSuccess) {
-          onAdminLoginSuccess(adminEmail.trim());
-        }
-        if (onLoginSuccess) {
-          onLoginSuccess('admin');
-        }
-      } else {
-        setAdminError("Invalid Administrator Passcode. Please try 'admin' for sandbox access.");
+    try {
+      if (!onGoogleSignIn) {
+        throw new Error('Secure administrator sign-in is not configured.');
       }
+
+      await onGoogleSignIn();
+
+      if (onAdminLoginSuccess) {
+        onAdminLoginSuccess();
+      }
+      if (onLoginSuccess) {
+        onLoginSuccess('admin');
+      }
+    } catch (err: any) {
+      setAdminError(err?.message || 'Administrator sign-in failed. Use an authorized Google account.');
+    } finally {
       setIsAdminLoading(false);
-    }, 450);
+    }
   };
 
   const handleGoogleSignInClick = async () => {
@@ -148,9 +144,7 @@ export function LoginPage({
   };
 
   const handleFillDemoAdmin = () => {
-    setAdminEmail('admin@parrotmoney.in');
-    setAdminPasscode('admin');
-    setAdminError('');
+    setAdminError('Sandbox administrator passcodes have been removed. Sign in with an authorized Google account.');
   };
 
   return (
@@ -326,6 +320,26 @@ export function LoginPage({
                         {isCustomerLoading ? 'Connecting...' : 'Sign In with Google Account'}
                       </button>
 
+                      <button
+                        type="button"
+                        disabled={isCustomerLoading}
+                        onClick={async () => {
+                          setCustomerError('');
+                          setIsCustomerLoading(true);
+                          try {
+                            await onGoogleSignIn?.();
+                            if (onLoginSuccess) onLoginSuccess('customer');
+                          } catch (err: any) {
+                            setCustomerError(err?.message || 'Secure guest session could not be created.');
+                          } finally {
+                            setIsCustomerLoading(false);
+                          }
+                        }}
+                        className="w-full py-3.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        Continue as Guest
+                      </button>
+
                       {/* Quick Test Demo Autofill */}
                       <div className="pt-2">
                         <p className="text-[10px] font-extrabold uppercase tracking-wider text-center text-natural-muted mb-2">
@@ -372,7 +386,7 @@ export function LoginPage({
                         <div className="flex items-center justify-between text-[10px] pt-1">
                           <button
                             type="button"
-                            onClick={() => setOtpCode('123456')}
+                            onClick={() => setCustomerError('Demo OTP values have been disabled. A verified OTP provider is required for mobile sign-in.')}
                             className="text-emerald-700 font-bold hover:underline bg-transparent border-none cursor-pointer"
                           >
                             Auto-fill OTP: 123456
@@ -398,7 +412,7 @@ export function LoginPage({
                   )}
                 </motion.div>
               ) : (
-                /* Admin & Staff Login Form */
+                /* Admin Login Form */
                 <motion.div
                   key="admin-auth"
                   initial={{ opacity: 0, x: 10 }}
@@ -407,74 +421,28 @@ export function LoginPage({
                   transition={{ duration: 0.2 }}
                   className="space-y-6 relative z-10"
                 >
-                  <div className="text-center space-y-1">
-                    <div className="w-12 h-12 bg-natural-sage/10 text-natural-sage rounded-2xl flex items-center justify-center mx-auto mb-2">
-                      <KeyRound className="w-6 h-6" />
+                  <div className="text-center space-y-2">
+                    <div className="w-12 h-12 bg-natural-sage/10 text-natural-sage rounded-2xl flex items-center justify-center mx-auto">
+                      <ShieldCheck className="w-6 h-6" />
                     </div>
                     <h2 className="text-2xl font-black text-natural-sage tracking-tight">
-                      Admin Control Portal
+                      Administrator Sign In
                     </h2>
                     <p className="text-xs text-natural-muted font-medium">
-                      Control content, live loan applications, lender feeds & credit rules
+                      Administrator access is restricted to authorized Firebase accounts.
                     </p>
                   </div>
 
                   {adminError && (
-                    <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs font-medium flex items-center gap-2 animate-in fade-in">
+                    <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs font-medium flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
                       <span>{adminError}</span>
                     </div>
                   )}
 
                   <form onSubmit={handleAdminSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">
-                        Administrator Work Email
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="email"
-                          value={adminEmail}
-                          onChange={(e) => setAdminEmail(e.target.value)}
-                          placeholder="admin@parrotmoney.in"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/70 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:border-natural-sage focus:outline-none"
-                          required
-                        />
-                        <Mail className="w-4 h-4 text-natural-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-natural-muted">
-                          Admin Security Passkey
-                        </label>
-                        <span className="text-[9px] font-bold text-natural-terracotta">
-                          Default sandbox: admin
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={adminPasscode}
-                          onChange={(e) => {
-                            setAdminPasscode(e.target.value);
-                            setAdminError('');
-                          }}
-                          placeholder="Enter passcode (e.g. admin)"
-                          className="w-full pl-11 pr-12 py-3.5 bg-slate-50/70 border border-natural-border rounded-xl text-sm font-bold text-natural-sage focus:bg-white focus:border-natural-sage focus:outline-none"
-                          required
-                          autoFocus
-                        />
-                        <Lock className="w-4 h-4 text-natural-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-natural-muted hover:text-natural-sage transition-colors p-1"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
+                      Sign in with Google. Your account must already have administrator privileges; entering a local password is no longer supported.
                     </div>
 
                     <button
@@ -485,27 +453,17 @@ export function LoginPage({
                       {isAdminLoading ? (
                         <span className="flex items-center gap-2">
                           <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Authenticating Master Key...
+                          Signing in securely...
                         </span>
                       ) : (
                         <>
                           <ShieldCheck className="w-4 h-4" />
-                          Access Admin Control Center
+                          Continue with Google
                         </>
                       )}
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={handleFillDemoAdmin}
-                      className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-colors border-none cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      Autofill Sandbox Admin Credentials
-                    </button>
                   </form>
-                </motion.div>
-              )}
+                </motion.div>              )}
             </AnimatePresence>
 
             {/* Bottom Highlights */}
