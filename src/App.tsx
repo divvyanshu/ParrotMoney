@@ -6195,11 +6195,6 @@ function AppContent() {
         <LoginPage 
           initialMode={loginInitialRole}
           onBack={() => setViewState('landing')}
-          onCustomerLoginSuccess={async (emailOrMobile) => {
-            await loginWithEmailOrMobile(emailOrMobile);
-            setInitialAppTab('dashboard');
-            setViewState('app');
-          }}
           onGoogleSignIn={async () => {
             await loginWithGoogle();
             setInitialAppTab('dashboard');
