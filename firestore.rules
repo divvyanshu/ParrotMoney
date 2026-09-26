@@ -1,26 +1,40 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for validating document and parameter lengths and injection attempts
-    function isValidId(id) { 
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Helper to extract incoming values
-    function incoming() { 
-      return request.resource.data; 
+    // Temporary bootstrap admin. Replace with Firebase custom claims before
+    // production role-management is enabled.
+    function isBootstrapAdmin() {
+      return isSignedIn()
+        && request.auth.token.email == 'admin@parrotmoney.in'
+        && request.auth.token.email_verified == true;
     }
 
-    // Helper to extract existing values
-    function existing() { 
-      return resource.data; 
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        isBootstrapAdmin()
+      );
     }
 
-    // 1. User Entity Validation helper
+    function isStaff() {
+      return isAdmin() || (
+        isSignedIn() && request.auth.token.staff == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function isValidUser(data) {
       return data.keys().hasAll(['id', 'name', 'email', 'role', 'createdAt'])
-        && data.keys().size() <= 6
+        && data.keys().size() <= 8
         && data.id is string && data.id.size() <= 128
         && data.name is string && data.name.size() <= 200
         && data.email is string && data.email.size() <= 256
@@ -28,17 +42,16 @@ service cloud.firestore {
         && data.createdAt is string && data.createdAt.size() <= 50;
     }
 
-    // 2. Loan Entity Validation helper
     function isValidLoan(data) {
       return data.keys().hasAll(['userId', 'status', 'createdAt', 'updatedAt'])
         && data.keys().size() <= 40
         && data.userId is string && data.userId.size() <= 128
-        && data.status is string && (data.status == 'draft' || data.status == 'submitted' || data.status == 'pending_review' || data.status == 'approved' || data.status == 'rejected')
+        && data.status is string
+        && (data.status == 'draft' || data.status == 'submitted' || data.status == 'pending_review' || data.status == 'approved' || data.status == 'rejected')
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
 
-    // 3. Document Entity Validation helper
     function isValidDocument(data) {
       return data.keys().hasAll(['id', 'loanId', 'name', 'type', 'url', 'status', 'uploadedAt'])
         && data.keys().size() <= 10
@@ -51,7 +64,6 @@ service cloud.firestore {
         && data.uploadedAt is string && data.uploadedAt.size() <= 50;
     }
 
-    // 4. Notification Entity Validation helper
     function isValidNotification(data) {
       return data.keys().hasAll(['id', 'userId', 'message', 'type', 'read', 'createdAt'])
         && data.keys().size() <= 8
@@ -63,7 +75,6 @@ service cloud.firestore {
         && data.createdAt is string && data.createdAt.size() <= 50;
     }
 
-    // 5. Lender Rating Entity Validation helper
     function isValidLenderRating(data) {
       return data.keys().hasAll(['lenderName', 'userId', 'loanId', 'rating', 'createdAt'])
         && data.keys().size() <= 7
@@ -74,7 +85,6 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
-    // 6. Bank Offer Entity Validation helper
     function isValidBank(data) {
       return data.keys().hasAll(['name', 'rate', 'processingTime', 'rating', 'score'])
         && data.keys().size() <= 8
@@ -85,7 +95,7 @@ service cloud.firestore {
         && data.score is number && data.score >= 0 && data.score <= 100;
     }
 
-    // 7. Lead Entity Validation helper
+    // Public lead ingestion is handled by the server API, not direct Firestore writes.
     function isValidLead(data) {
       return data.keys().hasAll(['email', 'phone', 'createdAt'])
         && data.keys().size() <= 8
@@ -94,7 +104,6 @@ service cloud.firestore {
         && data.createdAt is string && data.createdAt.size() <= 50;
     }
 
-    // 8. Market Campaign Entity Validation helper
     function isValidMarketCampaign(data) {
       return data.keys().hasAll(['lenderName', 'campaignTitle', 'channel', 'statedRate', 'scrapedAt', 'status'])
         && data.keys().size() <= 16
@@ -106,81 +115,137 @@ service cloud.firestore {
         && data.status is string && data.status.size() <= 50;
     }
 
-    // Default catch-all rule: DENY EVERYTHING unless explicitly allowed below
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // ---- MATCH BLOCKS FOR INDIVIDUAL COLLECTIONS ---- //
-
-    // User collection path matcher
     match /users/{userId} {
-      allow get: if isValidId(userId);
-      allow list: if true;
-      allow create: if isValidId(userId) && isValidUser(incoming()) && incoming().id == userId;
-      allow update: if isValidId(userId) && isValidUser(incoming()) && incoming().id == userId;
-      allow delete: if false; // Profiles cannot be hard-deleted by clients
+      allow get: if isSignedIn() && (request.auth.uid == userId || isStaff());
+      allow list: if isStaff();
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && isValidUser(request.resource.data)
+        && request.resource.data.id == userId
+        && (
+          isStaff() ||
+          (request.auth.uid == userId && request.resource.data.role == 'client')
+        );
+      allow update: if isStaff()
+        || (
+          isSignedIn()
+          && request.auth.uid == userId
+          && isValidUser(request.resource.data)
+          && request.resource.data.id == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.createdAt == resource.data.createdAt
+        );
+      allow delete: if isAdmin();
 
-      // User specific notifications subcollection
       match /notifications/{notifId} {
-        allow get: if isValidId(userId) && isValidId(notifId);
-        allow list: if isValidId(userId);
-        allow create: if isValidId(userId) && isValidId(notifId) && isValidNotification(incoming()) && incoming().userId == userId;
-        allow update: if isValidId(userId) && isValidId(notifId) && isValidNotification(incoming()) && incoming().userId == userId;
-        allow delete: if isValidId(userId); // Users can clear notifications
+        allow get, list: if isSignedIn() && (request.auth.uid == userId || isStaff());
+        allow create: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(notifId)
+          && isValidNotification(request.resource.data)
+          && request.resource.data.userId == userId
+          && (request.auth.uid == userId || isStaff());
+        allow update: if isStaff()
+          || (
+            isSignedIn()
+            && request.auth.uid == userId
+            && isValidNotification(request.resource.data)
+            && request.resource.data.userId == userId
+          );
+        allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       }
     }
 
-    // Loans collection path matcher
     match /loans/{loanId} {
-      allow get: if isValidId(loanId);
-      allow list: if true; // Let the queries onuserId filter, protecting with full type audits on creation
-      allow create: if isValidId(loanId) && isValidLoan(incoming());
-      allow update: if isValidId(loanId) && isValidLoan(incoming());
-      allow delete: if false; // Mortgage applications cannot be arbitrary deleted
+      allow get: if isSignedIn() && (
+        isStaff() ||
+        (resource.data.userId == request.auth.uid)
+      );
+      allow list: if isStaff() || (
+        isSignedIn() &&
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if isSignedIn()
+        && isValidId(loanId)
+        && isValidLoan(request.resource.data)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status in ['draft', 'submitted'];
+      allow update: if isStaff()
+        || (
+          isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId
+          && isValidLoan(request.resource.data)
+          && (
+            request.resource.data.status == resource.data.status
+            || request.resource.data.status in ['draft', 'submitted', 'pending_review']
+          )
+        );
+      allow delete: if isAdmin();
 
-      // Documents subcollection nested under loans
       match /documents/{docId} {
-        allow get: if isValidId(loanId) && isValidId(docId);
-        allow list: if isValidId(loanId);
-        allow create: if isValidId(loanId) && isValidId(docId) && isValidDocument(incoming()) && incoming().loanId == loanId;
-        allow update: if isValidId(loanId) && isValidId(docId) && isValidDocument(incoming()) && incoming().loanId == loanId;
-        allow delete: if isValidId(loanId);
+        allow get, list: if isSignedIn() && (
+          isStaff() ||
+          get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid
+        );
+        allow create: if isSignedIn()
+          && isValidId(loanId)
+          && isValidId(docId)
+          && isValidDocument(request.resource.data)
+          && request.resource.data.loanId == loanId
+          && (
+            isStaff() ||
+            get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid
+          );
+        allow update: if isStaff()
+          || (
+            isSignedIn()
+            && request.resource.data.loanId == resource.data.loanId
+            && isValidDocument(request.resource.data)
+            && get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid
+          );
+        allow delete: if isAdmin();
       }
     }
 
-    // Lender ratings collection path matcher
     match /lenderRatings/{ratingId} {
-      allow get: if isValidId(ratingId);
-      allow list: if true;
-      allow create: if isValidId(ratingId) && isValidLenderRating(incoming());
-      allow update: if isValidId(ratingId) && isValidLenderRating(incoming());
-      allow delete: if false;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn()
+        && isValidId(ratingId)
+        && isValidLenderRating(request.resource.data)
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
-    // Partner Banks collection path matcher
     match /banks/{bankId} {
-      allow get: if isValidId(bankId);
-      allow list: if true;
-      allow create: if isValidId(bankId) && isValidBank(incoming());
-      allow update: if isValidId(bankId) && isValidBank(incoming());
-      allow delete: if isValidId(bankId);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin()
+        && isValidId(bankId)
+        && isValidBank(request.resource.data);
     }
 
-    // Customer Leads collection path matcher
     match /leads/{leadId} {
-      allow get, list: if true;
-      allow create: if isValidId(leadId) && isValidLead(incoming());
-      allow update: if isValidId(leadId) && isValidLead(incoming());
-      allow delete: if false;
+      allow read, write: if false;
     }
 
-    // Market Campaigns collection path matcher (scraped advertisements & interest rate campaigns)
     match /MarketCampaigns/{campaignId} {
-      allow get, list: if true;
-      allow create: if isValidId(campaignId) && isValidMarketCampaign(incoming());
-      allow update: if isValidId(campaignId) && isValidMarketCampaign(incoming());
-      allow delete: if isValidId(campaignId);
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin()
+        && isValidId(campaignId)
+        && isValidMarketCampaign(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /config/{configId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }
