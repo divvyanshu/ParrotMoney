@@ -1,6 +1,3 @@
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -13,36 +10,25 @@ export interface UserContext {
 }
 
 export async function logCustomerLead(data: { email: string; phone: string; name?: string; source?: string }) {
-  const leadId = "lead_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   const payload = {
-    id: leadId,
     email: data.email.trim().toLowerCase(),
     phone: data.phone.trim(),
     name: (data.name || '').trim(),
     source: data.source || 'advisory_agent',
-    createdAt: new Date().toISOString()
   };
 
-  // 1. Log to server endpoint
-  try {
-    await fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch (err) {
-    console.warn("Server lead logging error:", err);
+  const response = await fetch('/api/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Lead logging failed with status ${response.status}`);
   }
 
-  // 2. Persist to Firestore collection
-  try {
-    const leadRef = doc(collection(db, 'leads'), leadId);
-    await setDoc(leadRef, payload);
-  } catch (err) {
-    console.warn("Firestore lead logging error (non-fatal):", err);
-  }
-
-  return payload;
+  const result = await response.json();
+  return result.lead || payload;
 }
 
 export async function getChatResponse(
