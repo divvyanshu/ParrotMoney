@@ -5727,10 +5727,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                          </span>
                        </div>
 
-                       {bank.matchFactors?.length > 0 && (
+                       {rec.matchFactors?.length > 0 && (
                          <div className="border-t border-natural-border/30 pt-3 space-y-1.5">
                            <p className="text-[8px] font-black uppercase tracking-widest text-natural-muted">Why this appears</p>
-                           {bank.matchFactors.slice(0, 3).map((factor: string) => (
+                           {rec.matchFactors.slice(0, 3).map((factor: string) => (
                              <p key={factor} className="text-[10px] text-natural-muted leading-relaxed flex items-start gap-1.5">
                                <span className="mt-1 w-1 h-1 rounded-full bg-emerald-500 shrink-0" />{factor}
                              </p>
