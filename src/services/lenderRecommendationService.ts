@@ -151,17 +151,13 @@ export function extractLenderFeatures(
 
   // 4. Institutional strength
   if (catStr.includes('psu') || catStr.includes('public')) {
-    feats.push('Sovereign Trust');
-    feats.push('No Prepayment Charges');
+    feats.push('PSU / public-sector lender');
   } else if (nameStr.includes('hdfc') || nameStr.includes('icici') || nameStr.includes('axis') || nameStr.includes('kotak')) {
-    feats.push('Fast Digital Sanction');
-    feats.push('Pre-Approved Offers');
+    feats.push('Digital application may be available');
   } else if (catStr.includes('affordable') || nameStr.includes('aadhar') || nameStr.includes('aavas') || nameStr.includes('home first')) {
-    feats.push('Flexible Income Norms');
-    feats.push('Low CIBIL Friendly');
+    feats.push('Eligibility criteria may vary');
   } else if (catStr.includes('sfb') || catStr.includes('small finance')) {
-    feats.push('Doorstep Service');
-    feats.push('Rapid Disbursal');
+    feats.push('Service model varies by location');
   }
 
   // 5. Active scheme highlight
