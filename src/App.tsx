@@ -6200,6 +6200,11 @@ function AppContent() {
             setInitialAppTab('dashboard');
             setViewState('app');
           }}
+          onGuestContinue={async () => {
+            await continueAsGuest();
+            setInitialAppTab('dashboard');
+            setViewState('app');
+          }}
           onAdminLoginSuccess={() => {
             setInitialAppTab('admin');
             setViewState('app');
