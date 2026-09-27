@@ -5793,9 +5793,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                          <span className="px-2 py-0.5 bg-stone-100 text-stone-700 text-[9px] font-bold rounded-md border border-stone-200">
                            {rec.categoryGroup}
                          </span>
-                         <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-100 flex items-center gap-1">
-                           <Sparkles className="w-3 h-3 text-emerald-500 fill-emerald-500" /> {rec.finalScore || rec.score || 90}% Match
-                         </span>
+                           <span className="px-2.5 py-1 bg-slate-50 text-slate-600 text-[9px] font-semibold rounded-lg border border-slate-200">Profile-based comparison</span>
                        </div>
                      </div>
 
@@ -5806,12 +5804,6 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                          <div>
                            <h3 className="text-lg font-black text-natural-sage tracking-tight leading-tight">{rec.name}</h3>
                            <div className="flex flex-wrap items-center gap-2 mt-1 text-natural-muted font-bold text-[10px]">
-                             <div className="flex items-center gap-1">
-                               <Star className="w-3 h-3 fill-yellow-400 stroke-yellow-400" />
-                               <span>{rec.rating.toFixed(1)}</span>
-                             </div>
-                             <span className="text-stone-300">•</span>
-                             <span className="text-stone-500">{rec.processingTime} TAT</span>
                              {rec.hasFemaleConcession && (
                                <>
                                  <span className="text-stone-300">•</span>
@@ -5886,7 +5878,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                          }}
                          className="bg-[#10B981] hover:bg-[#0e9f6e] text-white rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-md active:scale-95 duration-200"
                        >
-                         Select Offer <ArrowRight className="w-3 h-3" />
+                         View offer details <ArrowRight className="w-3 h-3" />
                        </button>
                      </div>
                   </div>
