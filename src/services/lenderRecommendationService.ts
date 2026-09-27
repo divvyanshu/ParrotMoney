@@ -394,7 +394,7 @@ export function compute43LenderRecommendations(
 
     // Clamp score safely
     const finalScore = Math.min(99, Math.max(30, Math.round(matchScore)));
-    const probability: 'Very High' | 'High' | 'Moderate' | 'Low' = 
+    const probability: 'Very High' | 'High' | 'Moderate' | 'Low' =
       finalScore >= 88 ? 'Very High' : finalScore >= 72 ? 'High' : finalScore >= 56 ? 'Moderate' : 'Low';
 
     // Processing Fee, Caps & Terms
