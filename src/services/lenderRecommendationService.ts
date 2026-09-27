@@ -23,9 +23,17 @@ export interface EnrichedLenderOffer {
   processingTime: string;
   processingFee: string;
   processingFeeCaps: string;
-  score: number;
-  finalScore: number;
-  probability: 'Very High' | 'High' | 'Moderate' | 'Low';
+  /** @deprecated No longer generated. Kept only for backwards compatibility. */
+  score?: number;
+  /** @deprecated No longer generated. Kept only for backwards compatibility. */
+  finalScore?: number;
+  /** @deprecated No longer generated. Kept only for backwards compatibility. */
+  probability?: 'Very High' | 'High' | 'Moderate' | 'Low';
+  rateType: 'Indicative lender range';
+  totalRepayment: number;
+  totalInterest: number;
+  matchFactors: string[];
+  fitStatus: 'Within stated criteria' | 'Review required' | 'Outside stated criteria';
   femaleConcession: string;
   hasFemaleConcession: boolean;
   cibilGuidelines: string;
@@ -126,46 +134,26 @@ export function extractLenderFeatures(
   schemeMatch?: CurrentSchemeGuideline
 ): string[] {
   const feats: string[] = [];
-  const feeStr = (lender['Processing Fee (Standard)'] || (lender as any)['Processing Fee Range'] || '').toLowerCase();
-  const promoStr = (lender['Current Schemes & Promotional Offers'] || '').toLowerCase();
-  const femaleStr = (lender['Female Borrower Scheme / Concession'] || '').toLowerCase();
-  const catStr = (lender['Institution Category'] || '').toLowerCase();
-  const nameStr = (lender['Lender Name'] || '').toLowerCase();
+  const feeStr = String(
+    lender['Processing Fee (Standard)'] ||
+    (lender as any)['Processing Fee Range'] ||
+    ''
+  ).trim();
+  const femaleStr = String(lender['Female Borrower Scheme / Concession'] || '').trim();
+  const catStr = String(lender['Institution Category'] || '').trim();
 
-  // 1. Fee benefits
-  if (feeStr.includes('zero') || feeStr.includes('nil') || promoStr.includes('100% waiver') || promoStr.includes('zero fee')) {
-    feats.push('Zero Processing Fee');
-  } else if (feeStr.includes('0.25%') || feeStr.includes('0.35%') || feeStr.includes('0.50%')) {
-    feats.push('Low Processing Fee');
-  }
+  if (feeStr) feats.push('Processing fee disclosed');
+  if (femaleStr) feats.push('Female-borrower terms disclosed');
+  if (/psu|public/i.test(catStr)) feats.push('Public-sector lender');
+  if (/private/i.test(catStr)) feats.push('Private-sector lender');
+  if (/housing finance|hfc|nbfc|affordable/i.test(catStr)) feats.push('Housing finance / NBFC');
+  if (/small finance|sfb/i.test(catStr)) feats.push('Small finance bank');
 
-  // 2. Overdraft capability
-  if (promoStr.includes('overdraft') || promoStr.includes('maxgain') || promoStr.includes('advantage') || nameStr.includes('sbi') || nameStr.includes('hdfc') || nameStr.includes('baroda')) {
-    feats.push('Overdraft Facility');
-  }
-
-  // 3. Concessions
-  if (femaleStr.includes('5 bps') || femaleStr.includes('0.05%') || femaleStr.includes('concession') || femaleStr.includes('discount')) {
-    feats.push('Women Concession');
-  }
-
-  // 4. Institutional strength
-  if (catStr.includes('psu') || catStr.includes('public')) {
-    feats.push('PSU / public-sector lender');
-  } else if (nameStr.includes('hdfc') || nameStr.includes('icici') || nameStr.includes('axis') || nameStr.includes('kotak')) {
-    feats.push('Digital application may be available');
-  } else if (catStr.includes('affordable') || nameStr.includes('aadhar') || nameStr.includes('aavas') || nameStr.includes('home first')) {
-    feats.push('Eligibility criteria may vary');
-  } else if (catStr.includes('sfb') || catStr.includes('small finance')) {
-    feats.push('Service model varies by location');
-  }
-
-  // 5. Active scheme highlight
   if (schemeMatch && schemeMatch['Scheme / Offer Name']) {
-    feats.push(schemeMatch['Scheme / Offer Name'].substring(0, 24));
+    feats.push('Scheme: ' + String(schemeMatch['Scheme / Offer Name']).trim().slice(0, 40));
   }
 
-  return Array.from(new Set(feats)).slice(0, 4);
+  return Array.from(new Set(feats)).slice(0, 5);
 }
 
 // Export list of all 43+ lender names directly derived from datasets
@@ -177,9 +165,21 @@ export const ALL_INDIAN_LENDERS: string[] = Array.from(
 ).sort((a, b) => a.localeCompare(b));
 
 // Core Recommendation Algorithm taking applicant form data and matching against all 43+ lenders
+/**
+ * Transparent offer comparison.
+ *
+ * Product rules:
+ * - Rates are read directly from the lender dataset.
+ * - ParrotMoney never adds CIBIL/LTV/gender/default "loaders" to a lender rate.
+ * - No approval probability, lender rating, hidden score, or synthetic processing time is generated.
+ * - Explanations are based only on submitted inputs and fields present in the dataset.
+ *
+ * algorithmParams remains in the signature so existing callers do not break.
+ * The legacy scoring parameters are intentionally ignored.
+ */
 export function compute43LenderRecommendations(
   formData: any,
-  algorithmParams: {
+  _algorithmParams: {
     cibilThreshold: number;
     cibilPenalty: number;
     maxFoirRatio: number;
@@ -191,293 +191,280 @@ export function compute43LenderRecommendations(
   },
   sortBy: 'highest_match' | 'lowest_rate' | 'fastest_time' | 'lowest_fee' = 'highest_match'
 ): EnrichedLenderOffer[] {
-  const isLAP = 
-    formData.loanPurpose === 'Loan Against Property (LAP)' || 
+  const isLAP =
+    formData.loanPurpose === 'Loan Against Property (LAP)' ||
     formData.propertyType === 'Commercial' ||
     formData.propertyType === 'Plot / Land Only';
 
   const dataset = isLAP ? lapData : homeLoanData;
-  const loanTypeStr: 'Home Loan' | 'Loan Against Property (LAP)' = isLAP ? 'Loan Against Property (LAP)' : 'Home Loan';
+  const loanType: 'Home Loan' | 'Loan Against Property (LAP)' =
+    isLAP ? 'Loan Against Property (LAP)' : 'Home Loan';
 
-  // Applicant inputs
-  const loanAmt = Number(formData.loanAmount) || 4500000;
-  const propertyVal = Number(formData.propertyValue) || 6000000;
-  const tenureYears = Number(formData.tenure) || 20;
-  const applicantAge = Number(formData.age) || 30;
-  const applicantGender = formData.gender || 'Male';
-  const cibilVal = Number(formData.cibilScore) || 750;
-  const hasDefaults = formData.cibilStatus === 'Outstanding & Defaults';
-  const occupation = formData.occupation || 'Salaried';
-  const salaryBank = (formData.bankAccount || '').toLowerCase().trim();
+  const loanAmount = Number(formData.loanAmount) || 0;
+  const propertyValue = Number(formData.propertyValue) || 0;
+  const tenureYears = Number(formData.tenure) || 0;
+  const applicantAge = Number(formData.age) || 0;
+  const occupation = String(formData.occupation || 'Salaried');
+  const salaryBank = String(formData.bankAccount || '').trim().toLowerCase();
 
-  // Monthly income & FOIR calculations
-  const monthlySalary = Number(formData.monthlySalary) || 0;
-  const monthlyRevenue = Number(formData.monthlyRevenue) || 0;
-  const baseMonthlyIncome = occupation === 'Salaried' 
-    ? monthlySalary 
-    : (monthlyRevenue > 0 ? (monthlyRevenue * 0.20) : monthlySalary || 75000);
+  const parseAmount = (text: string): number | null => {
+    if (!text) return null;
+    const normalized = text.toLowerCase().replace(/,/g, '');
+    if (/no upper limit|no cap|as per eligibility/.test(normalized)) return Number.MAX_SAFE_INTEGER;
+    const crore = normalized.match(/(\d+(?:\.\d+)?)\s*(?:cr|crore)/);
+    if (crore) return Number(crore[1]) * 10000000;
+    const lakh = normalized.match(/(\d+(?:\.\d+)?)\s*(?:lakh|lac)/);
+    if (lakh) return Number(lakh[1]) * 100000;
+    const thousand = normalized.match(/(\d+(?:\.\d+)?)\s*(?:thousand|k)\b/);
+    if (thousand) return Number(thousand[1]) * 1000;
+    const plain = normalized.match(/(?:₹|rs\.?\s*)?(\d+(?:\.\d+)?)/);
+    return plain ? Number(plain[1]) : null;
+  };
 
-  const coBorrowerIncome = (formData.hasCoBorrower === 'Yes' && Number(formData.householdIncome || 0) > 0)
-    ? (Number(formData.householdIncome) / 12)
-    : 0;
+  const parseLimits = (minText: string, maxText: string) => ({
+    min: parseAmount(minText) ?? 0,
+    max: parseAmount(maxText) ?? Number.MAX_SAFE_INTEGER
+  });
 
-  const combinedMonthlyIncome = baseMonthlyIncome + (algorithmParams.coBorrowerMultiplier * coBorrowerIncome);
-  const totalExistingEMIs = (formData.activeLoans || []).reduce((sum: number, l: any) => sum + (Number(l.amount) || 0), 0);
-  const calculatedLtv = propertyVal > 0 ? (loanAmt / propertyVal) * 100 : 75;
+  const calculateEmi = (principal: number, annualRate: number, years: number) => {
+    if (!principal || !annualRate || !years) return 0;
+    const months = Math.max(1, Math.round(years * 12));
+    const monthlyRate = annualRate / 100 / 12;
+    const factor = Math.pow(1 + monthlyRate, months);
+    return Math.round((principal * monthlyRate * factor) / (factor - 1));
+  };
 
   const results: EnrichedLenderOffer[] = dataset.map((lenderRecord, index) => {
-    const rawLenderName = lenderRecord['Lender Name'];
-    const shortName = getShortLenderName(rawLenderName);
-    const category = lenderRecord['Institution Category'] || 'Commercial Bank';
+    const lenderName = String(lenderRecord['Lender Name'] || 'Lender');
+    const shortName = getShortLenderName(lenderName);
+    const category = String(lenderRecord['Institution Category'] || 'Lender');
     const categoryGroup = mapCategoryToGroup(category);
 
-    // Current Schemes match
-    const schemeMatch = currentSchemesData.find(s => 
-      s['Lender / Organization Name'].toLowerCase().includes(shortName.toLowerCase()) ||
-      rawLenderName.toLowerCase().includes(s['Lender / Organization Name'].toLowerCase())
-    );
+    const schemeMatch = currentSchemesData.find((scheme) => {
+      const schemeName = String(scheme['Lender / Organization Name'] || '').toLowerCase();
+      return (
+        (shortName && schemeName.includes(shortName.toLowerCase())) ||
+        lenderName.toLowerCase().includes(schemeName)
+      );
+    });
 
-    // Rate parsing
-    const rawRoi = lenderRecord['Rate of Interest (ROI) Range'] || '8.50% - 9.50% p.a.';
-    let baseRate = parseBaseInterestRate(rawRoi);
+    const rawRoi = String(lenderRecord['Rate of Interest (ROI) Range'] || '').trim();
+    const rateNum = parseBaseInterestRate(rawRoi);
+    const emi = calculateEmi(loanAmount, rateNum, tenureYears);
+    const months = tenureYears ? Math.round(tenureYears * 12) : 0;
+    const totalRepayment = emi && months ? emi * months : 0;
+    const totalInterest = totalRepayment ? Math.max(0, totalRepayment - loanAmount) : 0;
 
-    // 1. Female Borrower Concession (-0.05% if female and scheme supports it)
-    const femaleSchemeStr = lenderRecord['Female Borrower Scheme / Concession'] || '';
-    const hasFemaleConcession = 
-      femaleSchemeStr.toLowerCase().includes('5 bps') || 
-      femaleSchemeStr.toLowerCase().includes('0.05%') || 
-      femaleSchemeStr.toLowerCase().includes('concession');
-    
-    if (applicantGender === 'Female' && hasFemaleConcession) {
-      baseRate = Math.max(7.80, baseRate - 0.05);
-    }
+    const minLoanText = String((lenderRecord as any)['Min Loan Amount'] || '').trim();
+    const maxLoanText = String((lenderRecord as any)['Max Loan Amount'] || '').trim();
+    const limits = parseLimits(minLoanText, maxLoanText);
 
-    // 2. Risk Premium Loader based on CIBIL
-    let cibilLoader = 0;
-    if (cibilVal < 650) {
-      cibilLoader = categoryGroup === 'HFCs & NBFCs' ? 0.75 : 1.25;
-    } else if (cibilVal < 700) {
-      cibilLoader = 0.45;
-    } else if (cibilVal < 750) {
-      cibilLoader = 0.15;
-    }
+    const minAgeSal = Number.parseInt(String((lenderRecord as any)['Min Age (Salaried)'] || ''), 10);
+    const maxAgeSal = Number.parseInt(String((lenderRecord as any)['Max Age at Maturity (Salaried)'] || ''), 10);
+    const minAgeSelf = Number.parseInt(String((lenderRecord as any)['Min Age (Self-Employed)'] || ''), 10);
+    const maxAgeSelf = Number.parseInt(String((lenderRecord as any)['Max Age at Maturity (Self-Employed)'] || ''), 10);
 
-    // 3. Defaults Loader
-    if (hasDefaults) {
-      cibilLoader += 1.50;
-    }
+    const minAge = occupation === 'Salaried' ? minAgeSal : minAgeSelf;
+    const maxAge = occupation === 'Salaried' ? maxAgeSal : maxAgeSelf;
 
-    // 4. High LTV Loader (RBI norm for LTV > 80%)
-    let ltvLoader = 0;
-    if (calculatedLtv > 80) {
-      ltvLoader = 0.10;
-    }
-
-    const dynamicRateNum = parseFloat((baseRate + cibilLoader + ltvLoader).toFixed(2));
-    const dynamicRateStr = dynamicRateNum.toFixed(2) + '%';
-
-    // Monthly EMI Calculation for this lender
-    const monthlyRate = (dynamicRateNum / 100) / 12;
-    const nMonths = tenureYears * 12;
-    const estEMI = (monthlyRate > 0 && nMonths > 0)
-      ? Math.round((loanAmt * monthlyRate * Math.pow(1 + monthlyRate, nMonths)) / (Math.pow(1 + monthlyRate, nMonths) - 1))
-      : 0;
-
-    // --- Scoring Algorithm (Target: 0 to 99) ---
-    let matchScore = 86; // Strong baseline
     const matchReasons: string[] = [];
     const cautionPoints: string[] = [];
+    const matchFactors: string[] = [];
 
-    // Category / Occupation Fit
-    if (occupation === 'Salaried') {
-      if (categoryGroup === 'PSU Banks') {
-        matchScore += 8;
-        matchReasons.push('Applicant occupation aligns with this lender category.');
-      } else if (categoryGroup === 'Private Banks') {
-        matchScore += 7;
-        matchReasons.push('Applicant occupation aligns with this lender category.');
-      }
-    } else { // Business / Self-Employed
-      if (categoryGroup === 'HFCs & NBFCs') {
-        matchScore += 10;
-        matchReasons.push('Lender category may support this applicant profile; confirm criteria with the lender.');
-      } else if (categoryGroup === 'Small Finance Banks') {
-        matchScore += 8;
-        matchReasons.push('Lender category may support this applicant profile; confirm criteria with the lender.');
-      } else if (categoryGroup === 'PSU Banks') {
-        matchScore -= 6;
-        cautionPoints.push('Strict 3-year audited ITR and vintage requirements for self-employed applicants.');
-      }
-    }
+    if (rawRoi) matchReasons.push('Lender rate range is available for comparison.');
 
-    // Salary Bank Match Bonus
     const isSalaryBankMatch = Boolean(
-      salaryBank && (
-        rawLenderName.toLowerCase().includes(salaryBank) ||
-        salaryBank.includes(rawLenderName.toLowerCase()) ||
+      salaryBank &&
+      (
+        lenderName.toLowerCase().includes(salaryBank) ||
+        salaryBank.includes(lenderName.toLowerCase()) ||
         shortName.toLowerCase().includes(salaryBank) ||
         salaryBank.includes(shortName.toLowerCase())
       )
     );
-
     if (isSalaryBankMatch) {
-      matchScore += algorithmParams.salaryMatchBonus;
-      matchReasons.push(`Internal relationship pricing & pre-cleared KYC via your active ${shortName} account.`);
+      matchFactors.push(
+        'Your existing ' + shortName +
+        ' relationship may be relevant; confirm any relationship pricing directly with the lender.'
+      );
     }
 
-    // CIBIL Evaluation
-    if (cibilVal >= 780) {
-      matchScore += 6;
-      matchReasons.push('Credit profile is above the configured comparison threshold.');
-    } else if (cibilVal < algorithmParams.cibilThreshold) {
-      if (categoryGroup === 'HFCs & NBFCs' && (category.includes('Affordable') || shortName.includes('Aadhar') || shortName.includes('Aavas') || shortName.includes('Home First'))) {
-        matchScore += 4; // Affordable HFCs specialize in credit-challenged applicants
-        matchReasons.push('Specialized credit repair & non-standard score assessment desk available.');
+    if (loanAmount > 0 && (limits.min > 0 || limits.max < Number.MAX_SAFE_INTEGER)) {
+      if (loanAmount < limits.min) {
+        cautionPoints.push('Requested loan amount is below the stated minimum of ' + (minLoanText || 'the lender range') + '.');
+      } else if (loanAmount > limits.max) {
+        cautionPoints.push('Requested loan amount is above the stated maximum of ' + (maxLoanText || 'the lender range') + '.');
       } else {
-        matchScore -= algorithmParams.cibilPenalty;
-        cautionPoints.push(`Score below preferred benchmark (${algorithmParams.cibilThreshold}); additional co-borrower recommended.`);
+        matchFactors.push('Requested loan amount is within the stated lender range.');
       }
     }
 
-    if (hasDefaults) {
-      matchScore -= 30;
-      cautionPoints.push('Past defaults trigger senior underwriter manual credit committee scrutiny.');
+    if (applicantAge > 0 && minAge > 0) {
+      if (applicantAge < minAge) {
+        cautionPoints.push('Applicant age is below the stated minimum of ' + minAge + ' years.');
+      } else {
+        matchFactors.push('Applicant age is within the stated minimum age.');
+      }
     }
 
-    // FOIR & Affordability Check
-    const maxAllowedEMI = combinedMonthlyIncome * (algorithmParams.maxFoirRatio / 100);
-    const totalCommittedEMI = estEMI + totalExistingEMIs;
-    if (totalCommittedEMI > maxAllowedEMI) {
-      const excess = totalCommittedEMI - maxAllowedEMI;
-      matchScore -= Math.min(25, Math.round((excess / maxAllowedEMI) * 30));
-      cautionPoints.push(`Debt-to-income (FOIR) ratio exceeds banking guideline of ${algorithmParams.maxFoirRatio}%.`);
+    if (applicantAge > 0 && tenureYears > 0 && maxAge > 0 &&
+        applicantAge + tenureYears > maxAge) {
+      cautionPoints.push(
+        'Requested tenure would take maturity beyond the stated maximum age of ' + maxAge + ' years.'
+      );
+    }
+
+    if (propertyValue > 0 && loanAmount > 0) {
+      const ltv = (loanAmount / propertyValue) * 100;
+      matchFactors.push(
+        'Illustrative LTV is ' + ltv.toFixed(1) +
+        '%; confirm the lender’s applicable LTV policy.'
+      );
+    }
+
+    const cibilTerms = String(lenderRecord['CIBIL Score Guidelines & Cut-offs'] || '').trim();
+    const targetBeneficiaries = String(
+      lenderRecord['Who Can Avail (Target Beneficiaries & Eligibility)'] || ''
+    ).trim();
+    const femaleTerms = String(lenderRecord['Female Borrower Scheme / Concession'] || '').trim();
+
+    if (cibilTerms) {
+      matchFactors.push('Credit-score criteria are disclosed; lender underwriting still applies.');
     } else {
-      matchScore += 4;
-      matchReasons.push('Estimated EMI is within the configured affordability threshold.');
+      cautionPoints.push('Credit-score criteria are not available in the comparison dataset.');
     }
+    if (targetBeneficiaries) matchReasons.push('Eligibility / target-borrower information is available.');
+    if (femaleTerms) matchReasons.push('Female-borrower terms are disclosed in the lender dataset.');
 
-    // Age at Maturity Check
-    const hlRecord = lenderRecord as HomeLoanGuideline;
-    const maxAgeSal = parseInt(hlRecord['Max Age at Maturity (Salaried)'] || '70', 10) || 70;
-    const maxAgeSelf = parseInt(hlRecord['Max Age at Maturity (Self-Employed)'] || '70', 10) || 70;
-    const allowedMaxAge = occupation === 'Salaried' ? maxAgeSal : maxAgeSelf;
+    const fitStatus =
+      cautionPoints.some((item) => /below the stated minimum|above the stated maximum|beyond the stated maximum age/i.test(item))
+        ? 'Outside stated criteria' as const
+        : cautionPoints.length > 0
+          ? 'Review required' as const
+          : 'Within stated criteria' as const;
 
-    if (applicantAge + tenureYears > allowedMaxAge) {
-      const overage = (applicantAge + tenureYears) - allowedMaxAge;
-      matchScore -= (overage * algorithmParams.agePenalty);
-      cautionPoints.push(`Loan maturity exceeds lender's maximum retirement age (${allowedMaxAge} years).`);
-    }
+    const feeRaw = String(
+      (lenderRecord as any)['Processing Fee (Standard)'] ||
+      (lenderRecord as any)['Processing Fee Range'] ||
+      ''
+    ).trim();
 
-    // Loan Amount Limits Check
-    const minLoanStr = (lenderRecord as any)['Min Loan Amount'] || '';
-    const maxLoanStr = (lenderRecord as any)['Max Loan Amount'] || '';
-    const { min: minL, max: maxL } = parseLoanLimits(minLoanStr, maxLoanStr);
+    const feeCap = String(
+      (lenderRecord as any)['Processing Fee Caps / Minimums'] ||
+      (lenderRecord as any)['Processing Fee Cap / Min'] ||
+      ''
+    ).trim();
 
-    if (loanAmt < minL) {
-      matchScore -= 20;
-      cautionPoints.push(`Requested amount below minimum ticket size (${minLoanStr}).`);
-    } else if (loanAmt > maxL) {
-      matchScore -= 25;
-      cautionPoints.push(`Requested amount exceeds institutional ceiling (${maxLoanStr}).`);
-    } else if (loanAmt >= 10000000 && (categoryGroup === 'Private Banks' || shortName.includes('SBI'))) {
-      matchScore += 5; // HNI priority desk
-      matchReasons.push('Requested loan amount falls within the dataset range.');
-    }
-
-    // LTV Check
-    if (calculatedLtv > algorithmParams.maxLtvRatio) {
-      matchScore -= 18;
-      cautionPoints.push(`Requested LTV (${calculatedLtv.toFixed(0)}%) exceeds institutional limit.`);
-    }
-
-    // Promotional copy does not alter applicant fit.
-
-    // Clamp score safely
-    const finalScore = Math.min(99, Math.max(30, Math.round(matchScore)));
-    const probability: 'Very High' | 'High' | 'Moderate' | 'Low' =
-      finalScore >= 88 ? 'Very High' : finalScore >= 72 ? 'High' : finalScore >= 56 ? 'Moderate' : 'Low';
-
-    // Processing Fee, Caps & Terms
-    const feeRaw = (lenderRecord as any)['Processing Fee (Standard)'] || (lenderRecord as any)['Processing Fee Range'] || '0.35% - 0.50% + GST';
-    const feeCap = (lenderRecord as any)['Processing Fee Caps / Minimums'] || (lenderRecord as any)['Processing Fee Cap / Min'] || 'Min ₹2,500, Max ₹15,000 + GST';
-
-    // Check Overdraft
-    const hasOverdraft = 
-      promoText.toLowerCase().includes('overdraft') || 
-      promoText.toLowerCase().includes('maxgain') || 
-      promoText.toLowerCase().includes('advantage') ||
-      rawLenderName.toLowerCase().includes('sbi') ||
-      rawLenderName.toLowerCase().includes('baroda');
+    const promoText = String(lenderRecord['Current Schemes & Promotional Offers'] || '').trim();
+    const hasFemaleConcession = Boolean(femaleTerms);
+    const hasOverdraft = /overdraft|maxgain/i.test(promoText);
 
     return {
-      id: `lender_${index}_${shortName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-      name: rawLenderName,
+      id: 'lender_' + index + '_' + shortName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+      name: lenderName,
       shortName,
       category,
       categoryGroup,
-      baseRateNum: dynamicRateNum,
-      rate: dynamicRateStr,
-      rawRateRange: rawRoi,
-      estEMI,
+      baseRateNum: rateNum,
+      rate: rawRoi || 'Not disclosed',
+      rawRateRange: rawRoi || 'Not disclosed',
+      rateType: 'Indicative lender range',
+      estEMI: emi,
+      totalRepayment,
+      totalInterest,
       features: extractLenderFeatures(lenderRecord, schemeMatch),
       processingTime: '',
-      processingFee: feeRaw,
-      processingFeeCaps: feeCap,
-      score: finalScore,
-      finalScore,
-      probability,
-      femaleConcession: femaleSchemeStr || 'Standard card rate applicable',
+      processingFee: feeRaw || 'Not disclosed',
+      processingFeeCaps: feeCap || 'Not disclosed',
+
+      // Deliberately absent: no synthetic lender score or approval probability.
+      score: undefined,
+      finalScore: undefined,
+      probability: undefined,
+
+      femaleConcession: femaleTerms || 'Not disclosed',
       hasFemaleConcession,
-      cibilGuidelines: lenderRecord['CIBIL Score Guidelines & Cut-offs'] || 'Minimum 700 score preferred',
-      targetBeneficiaries: lenderRecord['Who Can Avail (Target Beneficiaries & Eligibility)'] || 'Indian residents & NRIs',
-      currentScheme: promoText || (schemeMatch ? schemeMatch['Special Concession / Promotional Offer'] : 'Standard retail housing facility'),
+      cibilGuidelines: cibilTerms || 'Not disclosed',
+      targetBeneficiaries: targetBeneficiaries || 'Not disclosed',
+      currentScheme: promoText || 'No current scheme disclosed in dataset',
       hasOverdraft,
-      minAgeSalaried: parseInt(hlRecord['Min Age (Salaried)'] || '21', 10) || 21,
-      maxAgeMaturitySalaried: maxAgeSal,
-      minAgeSelfEmployed: parseInt(hlRecord['Min Age (Self-Employed)'] || '23', 10) || 23,
-      maxAgeMaturitySelfEmployed: maxAgeSelf,
-      minLoanAmountText: minLoanStr || '₹1,00,000',
-      maxLoanAmountText: maxLoanStr || '₹10,00,00,000',
-      minLoanAmountNum: minL,
-      maxLoanAmountNum: maxL,
-      prepaymentTerms: (lenderRecord as any)['Prepayment / Foreclosure (Floating Rate - Indiv)'] || (lenderRecord as any)['Foreclosure Penalty (Individual / Non-Business)'] || 'Zero charges on floating rate home loans for individuals.',
-      penalCharges: (lenderRecord as any)['Penal Clause (Delayed EMI / Bounce)'] || (lenderRecord as any)['Penal Charges / Bounce Charges'] || '18% to 24% p.a. on overdue EMI amount.',
-      typesOffered: (lenderRecord as any)['Types of Home Loans Offered'] || (lenderRecord as any)['Types of LAP Products'] || 'Home Purchase, Construction, Balance Transfer, Top-up.',
-      kycDocs: (lenderRecord as any)['Mandatory KYC Documents'] || (lenderRecord as any)['Mandatory KYC'] || 'PAN, Aadhaar, Passport, Proof of address.',
-      incomeDocsSalaried: (lenderRecord as any)['Income Documents (Salaried)'] || 'Salary slips (3 mos), Bank statements (6 mos), Form 16 (2 yrs).',
-      incomeDocsSelfEmployed: (lenderRecord as any)['Income Documents (Self-Employed)'] || (lenderRecord as any)['Financial Documents (Salaried & Self-Employed)'] || 'ITR (3 yrs), P&L balance sheet, operative bank statement (12 mos).',
-      propertyDocs: (lenderRecord as any)['Property & Title Documents Required'] || (lenderRecord as any)['Property Collateral Documents Required'] || 'Title deed chain, approved plan, tax receipts, EC, OC/CC.',
-      matchReasons,
-      cautionPoints,
+
+      minAgeSalaried: Number.isFinite(minAgeSal) ? minAgeSal : 0,
+      maxAgeMaturitySalaried: Number.isFinite(maxAgeSal) ? maxAgeSal : 0,
+      minAgeSelfEmployed: Number.isFinite(minAgeSelf) ? minAgeSelf : 0,
+      maxAgeMaturitySelfEmployed: Number.isFinite(maxAgeSelf) ? maxAgeSelf : 0,
+
+      minLoanAmountText: minLoanText || 'Not disclosed',
+      maxLoanAmountText: maxLoanText || 'Not disclosed',
+      minLoanAmountNum: limits.min,
+      maxLoanAmountNum: limits.max,
+
+      prepaymentTerms: String(
+        (lenderRecord as any)['Prepayment / Foreclosure (Floating Rate - Indiv)'] ||
+        (lenderRecord as any)['Foreclosure Penalty (Individual / Non-Business)'] ||
+        ''
+      ).trim() || 'Not disclosed',
+
+      penalCharges: String(
+        (lenderRecord as any)['Penal Clause (Delayed EMI / Bounce)'] ||
+        (lenderRecord as any)['Penal Charges / Bounce Charges'] ||
+        ''
+      ).trim() || 'Not disclosed',
+
+      typesOffered: String(
+        (lenderRecord as any)['Types of Home Loans Offered'] ||
+        (lenderRecord as any)['Types of LAP Products'] ||
+        ''
+      ).trim() || 'Not disclosed',
+
+      kycDocs: String(
+        (lenderRecord as any)['Mandatory KYC Documents'] ||
+        (lenderRecord as any)['Mandatory KYC'] ||
+        ''
+      ).trim() || 'Not disclosed',
+
+      incomeDocsSalaried: String((lenderRecord as any)['Income Documents (Salaried)'] || '').trim() || 'Not disclosed',
+      incomeDocsSelfEmployed: String((lenderRecord as any)['Income Documents (Self-Employed)'] || '').trim() || 'Not disclosed',
+      propertyDocs: String((lenderRecord as any)['Property Documents'] || '').trim() || 'Not disclosed',
+
+      matchReasons: Array.from(new Set(matchReasons)),
+      cautionPoints: Array.from(new Set(cautionPoints)),
+      matchFactors: Array.from(new Set(matchFactors)),
+      fitStatus,
       isSalaryBankMatch,
-      loanType: loanTypeStr
-    };
+      loanType
+    } satisfies EnrichedLenderOffer;
   });
 
-  // Sorting
-  return results.sort((a, b) => {
-    if (sortBy === 'lowest_rate') {
-      if (a.baseRateNum !== b.baseRateNum) return a.baseRateNum - b.baseRateNum;
-      return b.finalScore - a.finalScore;
-    }
-    if (sortBy === 'fastest_time') {
-      const getDays = (str: string) => {
-        const m = str.match(/(\d+)/);
-        return m ? parseInt(m[1], 10) : 99;
-      };
-      const dA = getDays(a.processingTime);
-      const dB = getDays(b.processingTime);
-      if (dA !== dB) return dA - dB;
-      return b.finalScore - a.finalScore;
-    }
-    if (sortBy === 'lowest_fee') {
-      const isFreeA = a.processingFee.toLowerCase().includes('nil') || a.processingFee.toLowerCase().includes('zero');
-      const isFreeB = b.processingFee.toLowerCase().includes('nil') || b.processingFee.toLowerCase().includes('zero');
-      if (isFreeA && !isFreeB) return -1;
-      if (!isFreeA && isFreeB) return 1;
-      return b.finalScore - a.finalScore;
-    }
-    // 'highest_match' (default)
-    return b.finalScore - a.finalScore;
-  });
+  // User-controlled sorting only. "highest_match" is intentionally source order:
+  // there is no hidden score or approval probability behind the ordering.
+  if (sortBy === 'lowest_rate') {
+    return [...results].sort((a, b) => {
+      if (!a.baseRateNum) return 1;
+      if (!b.baseRateNum) return -1;
+      return a.baseRateNum - b.baseRateNum;
+    });
+  }
+
+  if (sortBy === 'lowest_fee') {
+    const feeValue = (fee: string) => {
+      const match = fee.match(/(\d+(?:\.\d+)?)\s*%/);
+      return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+    };
+    return [...results].sort((a, b) => feeValue(a.processingFee) - feeValue(b.processingFee));
+  }
+
+  // fastest_time cannot be truthfully sorted without lender-sourced processing times.
+  return results;
+}
+
+export function getLenderComparisonSummary(offers: EnrichedLenderOffer[]) {
+  return {
+    totalOffers: offers.length,
+    rateAvailable: offers.filter((offer) => offer.baseRateNum > 0).length,
+    feeAvailable: offers.filter((offer) => offer.processingFee !== 'Not disclosed').length,
+    withinStatedCriteria: offers.filter((offer) => offer.fitStatus === 'Within stated criteria').length,
+    reviewRequired: offers.filter((offer) => offer.fitStatus === 'Review required').length,
+    outsideStatedCriteria: offers.filter((offer) => offer.fitStatus === 'Outside stated criteria').length,
+  };
 }
