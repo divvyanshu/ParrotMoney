@@ -167,16 +167,10 @@ const FACTORS_DATA = [
 ];
 
 const BANK_OFFERS_LIST = [
-  { bank: "HDFC Bank", offer: "7.15% ROI Special*" },
-  { bank: "SBI", offer: "7.10% ROI Min Rate*" },
-  { bank: "ICICI Bank", offer: "Zero Processing Fees" },
-  { bank: "Kotak Mahindra Bank", offer: "Super-fast Approval" },
-  { bank: "Axis Bank", offer: "100% Digital eSign" },
-  { bank: "Federal Bank", offer: "Instant Digital In-Principle" },
-  { bank: "Bajaj Housing", offer: "High LTV & Quick Sanction" },
-  { bank: "Tata Capital", offer: "Pre-approved Home Loan" },
-  { bank: "LIC HFL", offer: "Affordable Long-term Rates" },
-  { bank: "Piramal Finance", offer: "Flexible Income Assessment" }
+  { bank: "Home Loan", offer: "Compare rates, fees and tenure" },
+  { bank: "Loan Transfer", offer: "Compare your current loan with alternatives" },
+  { bank: "Loan Against Property", offer: "Review cost and eligibility factors" },
+  { bank: "Plot Loan", offer: "Compare available lender terms" }
 ];
 
 const getBankLogo = (name: string): string => {
