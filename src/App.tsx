@@ -725,7 +725,7 @@ function DashboardView({
         category: 'stage_update',
         title: `Status Changed to ${formatStatusName(newStatus)}`,
         message: `Loan application #${effectiveLoan.id?.slice(-8).toUpperCase()} status was updated to ${formatStatusName(newStatus)}.`,
-        recipient: profile?.email || user?.email || 'divvyanshu@gmail.com'
+        recipient: profile?.email || user?.email || ''
       });
     }
     prevStatusRef.current = activeLoanStatus;
@@ -800,7 +800,7 @@ function DashboardView({
       category: 'document_request',
       title: `Document Upload Verified: ${docId.replace('_', ' ').toUpperCase()}`,
       message: `📄 *PARROT DOCUMENT UPLOAD SUCCESSFUL*\n\nApplication: *#${effectiveLoan.id?.slice(-8).toUpperCase()}*\nDocument: *${docId.replace('_', ' ').toUpperCase()}*\n\nStatus: *Verified & AES-256 Encrypted*\nYour file has been secured and dispatched to the verification desk.`,
-      recipient: profile?.mobile || '+91 98765 43210'
+      recipient: profile?.mobile || ''
     });
 
     refreshData();
@@ -1462,7 +1462,7 @@ function AnalysisPortal({ progress }: { progress: number }) {
             Hold on, we are reviewing your data to best match the offer...
           </h2>
           <p className="text-xs sm:text-sm text-natural-muted font-medium max-w-sm mx-auto leading-relaxed px-2">
-            Our smart protocol is scanning 40+ top-tier banks to secure your optimal interest rate and tenure.
+            We are preparing a transparent comparison using lender data and the assumptions you provided.
           </p>
         </div>
 
@@ -3520,7 +3520,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                   <div className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-natural-border flex items-center justify-center overflow-hidden">
                      <div className="space-y-1 text-center">
                         <p className="text-[10px] font-black uppercase tracking-widest text-natural-muted">Avg Processing</p>
-                        <p className="text-2xl md:text-3xl font-black tracking-tighter text-natural-sage italic">4.2 Days</p>
+                        <p className="text-2xl md:text-3xl font-black tracking-tighter text-natural-sage italic">—</p>
                      </div>
                   </div>
                </div>
@@ -3607,7 +3607,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                 {loanStep === 6 && "Do you currently have any other active loans running ?"}
                 {loanStep === 7 && "Thanks for your patience, we would need some more information to proceed further with your enquiry"}
                 {loanStep === 8 && "Almost there! Just a few more details to create your profile."}
-                {loanStep === 9 && "We've found these custom offers for your profile."}
+                {loanStep === 9 && "Compare lender options using the same loan assumptions."}
                 {loanStep === 10 && "Your basic details have been submitted successfully."}
               </p>
             </div>
@@ -4805,7 +4805,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                 <div className="bg-natural-bg/40 p-4 md:p-10 rounded-2xl md:rounded-[2.5rem] border border-natural-terracotta/10 shadow-inner relative overflow-hidden">
                    <div className="absolute top-0 right-0 p-4 md:p-8 flex items-center gap-2">
                        <div className="w-2 h-2 rounded-full bg-natural-terracotta animate-pulse" />
-                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-natural-terracotta">Smart Loan Matching</span>
+                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-natural-terracotta">Offer comparison</span>
                    </div>
                    
                    {isAssessing ? (
@@ -4815,13 +4815,13 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                            <div className="absolute inset-0 bg-natural-terracotta/10 blur-xl animate-pulse rounded-full" />
                         </div>
                         <div className="text-center space-y-2">
-                           <p className="text-xs md:text-sm font-black text-natural-sage uppercase tracking-[0.3em] animate-pulse">Running Financial Algorithms...</p>
-                           <p className="text-[9px] md:text-[10px] text-natural-muted font-medium uppercase tracking-widest">Analyzing income, age, credit & property data</p>
+                           <p className="text-xs md:text-sm font-black text-natural-sage uppercase tracking-[0.3em] animate-pulse">Preparing your comparison</p>
+                           <p className="text-[9px] md:text-[10px] text-natural-muted font-medium uppercase tracking-widest">Using the information you provided to calculate illustrative affordability</p>
                         </div>
                      </div>
                    ) : activeAssessment && (
                      <div className="space-y-6 md:space-y-12 pt-4">
-                        {/* Approval Confidence & Assessment Pillars Card */}
+                        {/* Eligibility overview & Assessment Pillars Card */}
                         <div className="bg-white rounded-3xl border border-natural-border/70 p-6 md:p-8 shadow-xs space-y-6 md:space-y-8">
                            {/* Top Section: Approval Confidence Circular Gauge & Status */}
                            <div className="flex items-center justify-center sm:justify-start gap-4 md:gap-5">
@@ -4838,7 +4838,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                                  </svg>
                                  <div className="absolute inset-0 flex flex-col items-center justify-center">
                                     <span className={cn("text-xl font-black tabular-nums leading-none tracking-tight", activeAssessment.status === 'Low' ? 'text-red-500' : 'text-slate-900')}>{activeAssessment.score}%</span>
-                                    <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500 mt-0.5">MATCH</span>
+                                    <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500 mt-0.5">PROFILE</span>
                                  </div>
                               </div>
                               <div className="space-y-1 text-left">
@@ -5033,9 +5033,9 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                       <AlertCircle className="w-10 h-10 text-red-500" />
                     </div>
                     <div className="space-y-4">
-                      <h3 className="text-3xl font-black text-red-600 tracking-tighter italic">We're sorry, you are not eligible for a loan right now.</h3>
+                      <h3 className="text-3xl font-black text-red-600 tracking-tighter italic">Some lender criteria may not fit the information provided.</h3>
                       <p className="text-red-700/70 font-medium max-w-2xl mx-auto leading-relaxed">
-                        Our AI matching engine has determined that your current profile does not meet the minimum criteria of our 25+ lending partners. This is often due to high debt-to-income ratio or specific age-tenure constraints.
+                        This comparison cannot determine approval. Any lender-specific eligibility, affordability and credit decision is subject to the lender's own assessment and document verification.
                       </p>
                     </div>
 
@@ -5062,7 +5062,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                       onClick={() => { setActiveTab('dashboard'); setLoanStep(1); }}
                       className="bg-red-600 text-white px-12 py-6 rounded-[2.5rem] font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-600/20"
                     >
-                      Reset & Optimize Profile
+                      Review and adjust inputs
                     </button>
                   </motion.div>
                 ) : (
@@ -5071,10 +5071,10 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-50/80 p-3.5 md:p-4 rounded-2xl border border-stone-200">
                       <div>
                         <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-md inline-block mb-1">
-                          Dynamic Algorithm Matching Active
+                          Transparent comparison
                         </span>
                         <p className="text-xs text-stone-600 font-medium">
-                          Evaluated against <strong className="text-stone-900 font-bold">{getBankRecommendations().length} Institutional Lenders</strong> (PSU Banks, Private Banks, HFCs & SFBs)
+                          Showing <strong className="text-stone-900 font-bold">{getBankRecommendations().length} lender options</strong> from the maintained comparison dataset
                         </p>
                       </div>
                       <a
@@ -5096,12 +5096,6 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                           animate={{ opacity: 1, y: 0 }}
                           className="bg-white p-4 md:p-5 rounded-2xl border border-natural-border shadow-md hover:shadow-lg transition-all group relative overflow-hidden"
                         >
-                          {i === 0 && (
-                            <div className="absolute top-0 right-4 sm:right-16 bg-natural-terracotta text-white px-3 sm:px-4 py-0.5 rounded-b-lg text-[7.5px] sm:text-[8px] font-black uppercase tracking-[0.3em] shadow-lg">
-                              Top Match
-                            </div>
-                          )}
-
                           {formData.bankAccount && (bank.name.toLowerCase().includes(formData.bankAccount.toLowerCase()) || formData.bankAccount.toLowerCase().includes(bank.name.toLowerCase())) && (
                             <div className="absolute top-0 right-4 sm:right-16 bg-natural-sage text-white px-3 sm:px-4 py-0.5 rounded-b-lg text-[7.5px] sm:text-[8px] font-black uppercase tracking-[0.3em] shadow-lg flex items-center gap-1 dynamic-preferred">
                               <CheckCircle2 className="w-2.5 h-2.5" /> Preferred Salary Bank
@@ -5123,14 +5117,21 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                                         Women Concession
                                       </span>
                                     )}
-                                    <div className="flex items-center gap-0.5 bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md text-[8.5px] font-black border border-amber-100/50">
-                                      <Star className="w-2.5 h-2.5 fill-amber-400 stroke-amber-400" /> {bank.rating}
-                                    </div>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[8.5px] md:text-[9px] font-black text-natural-muted uppercase tracking-[0.15em]">
-                                    <span className="flex items-center gap-1 text-emerald-600 font-extrabold uppercase"><Sparkles className="w-2.5 h-2.5 text-emerald-500 fill-emerald-500" /> {bank.finalScore}% Match</span>
-                                    <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {bank.processingTime}</span>
-                                    <span className="flex items-center gap-1"><Activity className="w-2.5 h-2.5" /> {bank.probability} Confidence</span>
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-md border",
+                                      bank.fitStatus === 'Outside stated criteria'
+                                        ? "text-red-700 bg-red-50 border-red-100"
+                                        : bank.fitStatus === 'Review required'
+                                          ? "text-amber-700 bg-amber-50 border-amber-100"
+                                          : "text-emerald-700 bg-emerald-50 border-emerald-100"
+                                    )}>
+                                      {bank.fitStatus}
+                                    </span>
+                                    <span className="flex items-center gap-1 text-natural-muted">
+                                      <Info className="w-2.5 h-2.5" /> {bank.rateType}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
@@ -5138,7 +5139,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                               {/* Promotional Scheme Highlight */}
                               {bank.currentScheme && (
                                 <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl px-3 py-1.5 text-xs text-amber-900 font-medium line-clamp-1">
-                                  <strong className="font-bold text-amber-950">Offer: </strong>{bank.currentScheme}
+                                  <strong className="font-bold text-amber-950">Lender disclosure: </strong>{bank.currentScheme}
                                 </div>
                               )}
                               
@@ -5164,12 +5165,23 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                             <div className="flex flex-col sm:flex-row lg:flex-col items-center justify-between lg:justify-center bg-natural-bg/50 p-3 lg:p-4 rounded-xl border border-natural-border/50 text-center gap-2 lg:space-y-2 lg:min-w-[200px]">
                               <div className="text-center w-full">
                                 <p className="text-xl md:text-2xl font-black text-natural-sage tracking-tighter tabular-nums">{bank.rate}</p>
-                                <p className="text-[7.5px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.2em] mt-0.5">Calculated Interest Rate</p>
+                                <p className="text-[7.5px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.2em] mt-0.5">Lender Rate Range</p>
                               </div>
                               <div className="text-center w-full border-t lg:border-t border-slate-200/50 pt-1">
                                 <p className="text-sm md:text-base font-extrabold text-natural-terracotta tracking-tight tabular-nums">₹{bank.estEMI?.toLocaleString('en-IN') || '0'}/mo</p>
                                 <p className="text-[7.5px] md:text-[8px] font-black text-natural-muted uppercase tracking-[0.2em] mt-0.5">Estimated Monthly EMI</p>
                               </div>
+                              <div className="grid grid-cols-2 gap-2 w-full border-t border-slate-200/50 pt-2">
+                                <div className="text-left">
+                                  <p className="text-[7px] font-black text-natural-muted uppercase tracking-wider">Total repayment*</p>
+                                  <p className="text-[10px] font-bold text-natural-sage tabular-nums">₹{bank.totalRepayment ? bank.totalRepayment.toLocaleString('en-IN') : '—'}</p>
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-[7px] font-black text-natural-muted uppercase tracking-wider">Interest*</p>
+                                  <p className="text-[10px] font-bold text-natural-sage tabular-nums">₹{bank.totalInterest ? bank.totalInterest.toLocaleString('en-IN') : '—'}</p>
+                                </div>
+                              </div>
+                              <p className="text-[7px] text-natural-muted/70 leading-relaxed">*Illustrative using the displayed rate and requested tenure; lender terms may vary.</p>
                               <button 
                                 onClick={() => {
                                   updateForm('selectedBank', bank);
@@ -5178,7 +5190,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                                 disabled={isSubmitting}
                                 className="w-full sm:w-auto lg:w-full bg-[#10B981] text-white px-4 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-95 hover:bg-[#0e9f6e] transition-all shadow-md group/btn cursor-pointer"
                               >
-                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Apply Now <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" /></>}
+                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Request this offer <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" /></>}
                               </button>
                             </div>
                           </div>
@@ -5576,7 +5588,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs"
                  >
                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                   <span>Compare Top 3</span>
+                   <span>Compare first 3</span>
                  </button>
                ) : (
                  <div className="flex items-center gap-2">
@@ -5731,7 +5743,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                          <span className="px-2 py-0.5 bg-stone-100 text-stone-700 text-[9px] font-bold rounded-md border border-stone-200">
                            {rec.categoryGroup}
                          </span>
-                           <span className="px-2.5 py-1 bg-slate-50 text-slate-600 text-[9px] font-semibold rounded-lg border border-slate-200">Profile-based comparison</span>
+                           <span className="px-2.5 py-1 bg-slate-50 text-slate-600 text-[9px] font-semibold rounded-lg border border-slate-200">Transparent comparison</span>
                        </div>
                      </div>
 
@@ -5755,7 +5767,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                        {/* Current Scheme Banner (if any) */}
                        {rec.currentScheme && (
                          <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl px-3 py-2 text-xs text-amber-900 font-medium line-clamp-2">
-                           <strong className="font-bold text-amber-950">Active Scheme: </strong>{rec.currentScheme}
+                           <strong className="font-bold text-amber-950">Lender disclosure: </strong>{rec.currentScheme}
                          </div>
                        )}
 
@@ -5778,6 +5790,17 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                            {rec.processingFee}
                          </span>
                        </div>
+
+                       {bank.matchFactors?.length > 0 && (
+                         <div className="border-t border-natural-border/30 pt-3 space-y-1.5">
+                           <p className="text-[8px] font-black uppercase tracking-widest text-natural-muted">Why this appears</p>
+                           {bank.matchFactors.slice(0, 3).map((factor: string) => (
+                             <p key={factor} className="text-[10px] text-natural-muted leading-relaxed flex items-start gap-1.5">
+                               <span className="mt-1 w-1 h-1 rounded-full bg-emerald-500 shrink-0" />{factor}
+                             </p>
+                           ))}
+                         </div>
+                       )}
 
                        {/* Feature badges */}
                        <div className="flex flex-wrap gap-1 pt-1">
