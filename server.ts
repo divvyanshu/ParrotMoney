@@ -95,6 +95,19 @@ function createRateLimiter(maxRequests: number, windowMs: number = 60000, keyPre
 async function startServer() {
   const app = express();
   
+
+  // Protect privileged operational endpoints with a server-only shared secret.
+  // This is a temporary machine-to-machine guard; user-facing admin actions should
+  // use Firebase Admin ID-token verification in the next migration phase.
+  const requireInternalJobKey: express.RequestHandler = (req, res, next) => {
+    const configuredKey = process.env.INTERNAL_JOB_KEY;
+    const suppliedKey = req.header("x-internal-job-key");
+    if (!configuredKey || !suppliedKey || suppliedKey !== configuredKey) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+    next();
+  };
+
   // Port configuration:
   // - In Google Cloud Run / AI Studio container (process.env.K_SERVICE is present), 
   //   server MUST bind strictly to port 3000 behind the container's nginx reverse proxy.
@@ -262,11 +275,11 @@ async function startServer() {
   app.get("/Bank_and_NBFC_Home_Loan_and_LAP_Guidelines.xlsx", sendExcelGuidelines);
 
   // Daily Automated Excel Status & Manual Refresh APIs
-  app.get("/api/admin/lenders-excel/status", (req, res) => {
+  app.get("/api/admin/lenders-excel/status", requireInternalJobKey, (req, res) => {
     res.json(getExcelSyncStatus());
   });
 
-  app.post("/api/admin/lenders-excel/refresh", (req, res) => {
+  app.post("/api/admin/lenders-excel/refresh", requireInternalJobKey, (req, res) => {
     try {
       regenerateDailyLendersWorkbook();
       res.json({
@@ -280,7 +293,7 @@ async function startServer() {
   });
 
   // AI Campaign & Ad Scraper Endpoints
-  app.get("/api/admin/campaigns/list", async (req, res) => {
+  app.get("/api/admin/campaigns/list", requireInternalJobKey, async (req, res) => {
     try {
       // 1. Try reading from Firestore 'MarketCampaigns' collection
       const firestoreCampaigns = await getMarketCampaignsFromFirestore();
@@ -308,7 +321,7 @@ async function startServer() {
     });
   });
 
-  app.post("/api/admin/campaigns/scrape", async (req, res) => {
+  app.post("/api/admin/campaigns/scrape", requireInternalJobKey, async (req, res) => {
     try {
       let client: GoogleGenAI | null = null;
       try {
@@ -330,7 +343,7 @@ async function startServer() {
   });
 
   // Cloud Function Daily Lender Sync Endpoint
-  app.post("/api/cloud-functions/daily-lender-sync", async (req, res) => {
+  app.post("/api/cloud-functions/daily-lender-sync", requireInternalJobKey, async (req, res) => {
     try {
       const authHeader = req.headers.authorization;
       const token = authHeader ? authHeader.replace(/^Bearer\s+/i, "") : (req.body?.googleSheetsToken || undefined);
@@ -343,7 +356,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/cloud-functions/scheduler-status", (req, res) => {
+  app.get("/api/cloud-functions/scheduler-status", requireInternalJobKey, (req, res) => {
     res.json(getSchedulerStatus());
   });
 
