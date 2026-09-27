@@ -2873,75 +2873,79 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
     selectedBank: null as any
   });
 
-  // Real-time deterministic financial assessment derived directly from current formData
+  // Transparent affordability estimate derived from the user's inputs.
+  // This is a calculator aid, not a lender approval decision or approval probability.
   const derivedAssessment = useMemo<LoanAssessmentResult>(() => {
-    const reqLakhs = Math.max(5, Math.round((formData.loanAmount || 3000000) / 100000));
-    const propLakhs = Math.max(reqLakhs, Math.round((formData.propertyValue || 5000000) / 100000));
-    const monthlyInflow = (formData.occupation === 'Business' || formData.occupation === 'Self-Employed')
-      ? (formData.monthlyRevenue || 100000)
-      : (formData.monthlySalary || (formData.householdIncome ? Math.round(formData.householdIncome / 2) : 60000));
-    
-    // RBI Statutory LTV Cap
-    const ltvCap = propLakhs <= 30 ? 0.90 : propLakhs <= 75 ? 0.80 : 0.75;
-    const maxByProperty = Math.round(propLakhs * ltvCap);
-    
-    // FOIR capacity
-    const foirPercent = monthlyInflow < 50000 ? 0.50 : monthlyInflow <= 100000 ? 0.55 : 0.65;
-    const existingEmiSum = (formData.activeLoans || []).reduce((acc: number, curr: any) => acc + (Number(curr.emi) || 0), 0);
-    const maxAllowableEmi = Math.max(5000, (monthlyInflow * foirPercent) - existingEmiSum);
-    
-    const currentTenure = Math.min(30, Math.max(5, formData.tenure || 20));
-    const r = 8.50 / 12 / 100;
-    const n = currentTenure * 12;
-    const maxByIncome = Math.round((maxAllowableEmi * (Math.pow(1 + r, n) - 1)) / (r * Math.pow(1 + r, n)) / 100000);
-    
-    const maxEligible = Math.min(maxByProperty, Math.max(10, maxByIncome));
-    
-    // Points / Score calculation
-    const cibil = formData.cibilScore || 750;
-    const cibilPoints = cibil >= 780 ? 95 : cibil >= 750 ? 90 : cibil >= 700 ? 78 : cibil >= 650 ? 60 : 45;
-    const incomePoints = monthlyInflow >= 150000 ? 95 : monthlyInflow >= 80000 ? 90 : monthlyInflow >= 45000 ? 82 : 68;
-    const agePoints = (formData.age || 30) <= 38 ? 95 : (formData.age || 30) <= 48 ? 88 : (formData.age || 30) <= 55 ? 78 : 65;
-    const propPoints = reqLakhs <= maxByProperty ? 92 : 72;
-    const workPoints = (Number(formData.tenureInOrg) || Number(formData.businessYears) || 3) >= 3 ? 90 : 80;
-    
-    const avgScore = Math.round((cibilPoints * 0.35) + (incomePoints * 0.25) + (agePoints * 0.15) + (propPoints * 0.15) + (workPoints * 0.10));
-    const status: 'High' | 'Medium' | 'Low' = avgScore >= 75 ? 'High' : avgScore >= 55 ? 'Medium' : 'Low';
-    
-    const getCatStatus = (pts: number): 'Excellent' | 'Good' | 'Average' | 'Poor' => 
-      pts >= 90 ? 'Excellent' : pts >= 78 ? 'Good' : pts >= 60 ? 'Average' : 'Poor';
+    const propertyValue = Number(formData.propertyValue) || 0;
+    const loanAmount = Number(formData.loanAmount) || 0;
+    const tenureYears = Math.min(30, Math.max(5, Number(formData.tenure) || 20));
+    const monthlyIncome =
+      formData.occupation === 'Business' || formData.occupation === 'Self-Employed'
+        ? Number(formData.monthlyRevenue) || 0
+        : Number(formData.monthlySalary) || 0;
+
+    const statutoryLtvCap =
+      loanAmount <= 3000000 ? 0.90 :
+      loanAmount <= 7500000 ? 0.80 : 0.75;
+
+    const maxByProperty = propertyValue > 0
+      ? Math.round(propertyValue * statutoryLtvCap / 100000)
+      : 0;
+
+    const existingEmi = (formData.activeLoans || []).reduce(
+      (sum: number, loan: any) => sum + (Number(loan.emi) || 0),
+      0
+    );
+
+    // Calculator assumption only; lenders use their own affordability methodology.
+    const referenceFoir = 0.50;
+    const availableEmi = Math.max(0, (monthlyIncome * referenceFoir) - existingEmi);
+    const monthlyRate = 0.085 / 12;
+    const months = tenureYears * 12;
+    const maxByIncome = availableEmi > 0
+      ? Math.round(
+          (availableEmi * (Math.pow(1 + monthlyRate, months) - 1)) /
+          (monthlyRate * Math.pow(1 + monthlyRate, months)) / 100000
+        )
+      : 0;
+
+    const maxEligibleAmount = maxByProperty > 0 && maxByIncome > 0
+      ? Math.min(maxByProperty, maxByIncome)
+      : Math.max(maxByProperty, maxByIncome);
+
+    const ltv = propertyValue > 0 && loanAmount > 0
+      ? (loanAmount / propertyValue) * 100
+      : 0;
+
+    const categoryStatus = (message: string) => ({
+      status: 'Good' as const,
+      message
+    });
 
     return {
-      score: avgScore,
-      confidence: 0.95,
-      status,
-      maxEligibleAmount: maxEligible,
+      // Legacy fields retained for type compatibility; they are not displayed as a score.
+      score: 0,
+      confidence: 0,
+      status: 'Medium',
+      maxEligibleAmount,
       categories: {
-        income: { status: getCatStatus(incomePoints), message: `Score: ${incomePoints}/100` },
-        age: { status: getCatStatus(agePoints), message: `Score: ${agePoints}/100` },
-        credit: { status: getCatStatus(cibilPoints), message: `Score: ${cibilPoints}/100` },
-        property: { status: getCatStatus(propPoints), message: `Score: ${propPoints}/100` },
-        continuity: { status: getCatStatus(workPoints), message: `Score: ${workPoints}/100` }
+        income: categoryStatus(monthlyIncome > 0 ? 'Income entered for calculator estimate' : 'Income not provided'),
+        age: categoryStatus(formData.age ? 'Age entered; lender-specific maturity rules apply' : 'Age not provided'),
+        credit: categoryStatus(formData.cibilScore ? 'Credit score entered; lender underwriting applies' : 'Credit score not provided'),
+        property: categoryStatus(propertyValue > 0 ? 'Property value entered' : 'Property value not provided'),
+        continuity: categoryStatus('Employment / business information provided as entered')
       },
       recommendations: [
-        cibil < 750 ? "Ensure timely credit card payments to elevate CIBIL score into prime 750+ tier" : "Your strong CIBIL score qualifies you for prime institutional interest concessions",
-        "Add a co-applicant to unlock up to 35% higher debt FOIR capacity",
-        "Ensure all salary slips / ITR filings and 6-month bank statements are readily validated"
+        'Compare lender rate, EMI, total repayment, fees and key terms together.',
+        'Confirm lender-specific eligibility, affordability and documentation before applying.',
+        'Treat all displayed calculations as illustrative until confirmed by the lender.'
       ],
-      reasoning: `Calculated with an allowable FOIR limit of ${Math.round(foirPercent * 100)}% and RBI statutory property LTV ceiling of ${Math.round(ltvCap * 100)}% based on ₹${monthlyInflow.toLocaleString('en-IN')}/mo cashflow.`
+      reasoning:
+        'Illustrative calculator using a 50% reference FOIR assumption and the applicable property-value LTV cap. Actual lender criteria may differ.'
     };
   }, [formData]);
 
-  const activeAssessment: LoanAssessmentResult = useMemo(() => {
-    if (!aiAssessment) return derivedAssessment;
-    const normalizedMax = aiAssessment.maxEligibleAmount > 10000 
-      ? Math.round(aiAssessment.maxEligibleAmount / 100000) 
-      : aiAssessment.maxEligibleAmount;
-    return {
-      ...aiAssessment,
-      maxEligibleAmount: normalizedMax || derivedAssessment.maxEligibleAmount,
-    };
-  }, [aiAssessment, derivedAssessment]);
+  const activeAssessment: LoanAssessmentResult = derivedAssessment;
 
 
 
@@ -3209,21 +3213,9 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
       }, 100);
 
       setIsAssessing(true);
-      
-      // Perform AI assessment with a 3.8s timeout race to guarantee quick resolution
-      (async () => {
-        try {
-          const assessmentPromise = performRiskAssessment(formData);
-          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3800));
-          const result = await Promise.race([assessmentPromise, timeoutPromise]);
-          if (result) {
-            setAiAssessment(result);
-          }
-        } catch (err) {
-          console.error("Analysis error:", err);
-        }
-      })();
-      
+
+      // No approval prediction is performed here. The next screen presents
+      // lender comparisons and clearly labelled illustrative calculator outputs.
       // Ensure total reviewing screen never exceeds 5 seconds (strictly under 7 seconds max)
       setTimeout(() => {
         clearInterval(interval);
@@ -3278,7 +3270,12 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
         ...formData,
         selectedBank: chosenBank !== undefined ? chosenBank : formData.selectedBank,
         status: 'submitted',
-        aiAssessment,
+        comparisonBasis: {
+          loanAmount: formData.loanAmount,
+          propertyValue: formData.propertyValue,
+          tenure: formData.tenure,
+          creditScoreProvided: Boolean(formData.cibilScore)
+        },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
