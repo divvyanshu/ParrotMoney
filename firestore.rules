@@ -97,11 +97,33 @@ service cloud.firestore {
 
     // Public lead ingestion is handled by the server API, not direct Firestore writes.
     function isValidLead(data) {
-      return data.keys().hasAll(['email', 'phone', 'createdAt'])
-        && data.keys().size() <= 8
+      return data.keys().hasAll([
+          'userId', 'leadId', 'product', 'loanAmount', 'propertyValue',
+          'tenureYears', 'city', 'fullName', 'mobile', 'email',
+          'employmentType', 'monthlyIncome', 'existingEmi', 'consent',
+          'lifecycleStage', 'intentSignals', 'profileCompleteness',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().size() <= 24
+        && data.userId is string && data.userId.size() <= 128
+        && data.leadId is string && data.leadId.size() <= 64
+        && data.product is string && data.product.size() <= 100
+        && data.loanAmount is number && data.loanAmount >= 0 && data.loanAmount <= 1000000000
+        && data.propertyValue is number && data.propertyValue >= 0 && data.propertyValue <= 5000000000
+        && data.tenureYears is number && data.tenureYears >= 1 && data.tenureYears <= 40
+        && data.city is string && data.city.size() <= 100
+        && data.fullName is string && data.fullName.size() <= 200
+        && data.mobile is string && data.mobile.size() <= 20
         && data.email is string && data.email.size() <= 256
-        && data.phone is string && data.phone.size() <= 50
-        && data.createdAt is string && data.createdAt.size() <= 50;
+        && data.employmentType is string && data.employmentType.size() <= 50
+        && data.monthlyIncome is number && data.monthlyIncome >= 0 && data.monthlyIncome <= 100000000
+        && data.existingEmi is number && data.existingEmi >= 0 && data.existingEmi <= 100000000
+        && data.consent is map
+        && data.lifecycleStage is string
+        && data.intentSignals is list && data.intentSignals.size() <= 10
+        && data.profileCompleteness is number && data.profileCompleteness >= 0 && data.profileCompleteness <= 100
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && data.updatedAt is string && data.updatedAt.size() <= 50;
     }
 
     function isValidMarketCampaign(data) {
@@ -231,7 +253,19 @@ service cloud.firestore {
     }
 
     match /leads/{leadId} {
-      allow read, write: if false;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isStaff());
+      allow list: if isStaff();
+      allow create: if isSignedIn()
+        && isValidId(leadId)
+        && isValidLead(request.resource.data)
+        && request.resource.data.leadId == leadId
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if isStaff()
+        || (isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId
+          && isValidLead(request.resource.data));
+      allow delete: if isAdmin();
     }
 
     match /MarketCampaigns/{campaignId} {
