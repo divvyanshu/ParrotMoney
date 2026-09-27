@@ -113,108 +113,56 @@ const CATEGORIES = [
 
 const FACTORS_DATA = [
   {
-    title: "ROI Savings",
-    desc: "Save ₹4L+ over tenure",
-    badgeLeft: "Comparison on ₹1.0 Crore",
-    badgeRight: "20 Year Tenure",
+    title: "Total borrowing cost",
+    desc: "Look beyond the headline rate",
+    badgeLeft: "Illustrative comparison",
+    badgeRight: "Final terms vary by profile",
     banks: [
-      { name: "Bank Alpha", value: "8.65%", status: "Standard Rate", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "7.10%", status: "Guaranteed Min*", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "8.80%", status: "Insurance Bundled", isBest: false, isWorst: false },
-      { name: "Bank Delta", value: "9.25%", status: "Base Retail Pricing", isBest: false, isWorst: true }
+      { name: "Illustrative lender A", value: "Rate + fees", status: "Review total cost", isBest: false, isWorst: false },
+      { name: "Illustrative lender B", value: "Rate + fees", status: "Review total cost", isBest: false, isWorst: false },
+      { name: "Illustrative lender C", value: "Rate + fees", status: "Review total cost", isBest: false, isWorst: false },
+      { name: "Illustrative lender D", value: "Rate + fees", status: "Review total cost", isBest: false, isWorst: false }
     ],
-    highlight: "Saves ₹16,40,000+ in total interest over your tenure!"
+    highlight: "Compare the complete cost, not just the advertised interest rate."
   },
   {
-    title: "Loan to Value",
-    desc: "Max upfront downpayment",
-    badgeLeft: "Property Value ₹1.2 Crore",
-    badgeRight: "Downpayment Burden",
+    title: "Eligibility fit",
+    desc: "Understand why an option may match",
+    badgeLeft: "Profile dependent",
+    badgeRight: "Lender assessment applies",
     banks: [
-      { name: "Bank Alpha", value: "80% LTV", status: "₹24L Downpayment Required", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "90% LTV", status: "₹12L Downpayment Required", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "85% LTV", status: "₹18L Downpayment Required", isBest: false, isWorst: false },
-      { name: "Bank Delta", value: "75% LTV", status: "₹30L Downpayment Required", isBest: false, isWorst: true }
+      { name: "Illustrative lender A", value: "Profile fit", status: "Income, credit & property factors", isBest: false, isWorst: false },
+      { name: "Illustrative lender B", value: "Profile fit", status: "Income, credit & property factors", isBest: false, isWorst: false },
+      { name: "Illustrative lender C", value: "Profile fit", status: "Income, credit & property factors", isBest: false, isWorst: false },
+      { name: "Illustrative lender D", value: "Profile fit", status: "Income, credit & property factors", isBest: false, isWorst: false }
     ],
-    highlight: "Bank Beta reduces your critical upfront cash burden by 50%!"
+    highlight: "Show users the factors that influence eligibility instead of presenting a black-box promise."
   },
   {
-    title: "Tenure Burden",
-    desc: "Reduces monthly EMI cost",
-    badgeLeft: "Based on ₹1.0 Crore Loan",
-    badgeRight: "Age Boundary 65 Eligible",
+    title: "Fees & charges",
+    desc: "Make every material fee visible",
+    badgeLeft: "Processing and other charges",
+    badgeRight: "Verify before acceptance",
     banks: [
-      { name: "Bank Alpha", value: "20 Years", status: "EMI: ₹88,370/mo", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "30 Years", status: "EMI: ₹76,180/mo (Max Savings)", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "25 Years", status: "EMI: ₹83,050/mo", isBest: false, isWorst: false },
-      { name: "Bank Delta", value: "20 Years", status: "EMI: ₹91,590/mo", isBest: false, isWorst: true }
+      { name: "Illustrative lender A", value: "See fee sheet", status: "Processing / legal / other charges", isBest: false, isWorst: false },
+      { name: "Illustrative lender B", value: "See fee sheet", status: "Processing / legal / other charges", isBest: false, isWorst: false },
+      { name: "Illustrative lender C", value: "See fee sheet", status: "Processing / legal / other charges", isBest: false, isWorst: false },
+      { name: "Illustrative lender D", value: "See fee sheet", status: "Processing / legal / other charges", isBest: false, isWorst: false }
     ],
-    highlight: "Lowers monthly cashout load by ₹12,190 with optimized tenure elongation!"
+    highlight: "Present material charges in the same comparison view so users can make an informed choice."
   },
   {
-    title: "PF & Charges",
-    desc: "Zero hidden fee markup",
-    badgeLeft: "Incurred Overheads",
-    badgeRight: "Administration Fees",
+    title: "Tenure & EMI",
+    desc: "Balance monthly affordability and total cost",
+    badgeLeft: "Illustrative calculator",
+    badgeRight: "User-selected tenure",
     banks: [
-      { name: "Bank Alpha", value: "0.50% fee", status: "₹50,000 + GST", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "Flat ₹4,999", status: "Zero markups/hidden pricing", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "1.00% fee", status: "₹1,00,000 + GST", isBest: false, isWorst: true },
-      { name: "Bank Delta", value: "0.40% fee", status: "₹40,000 + GST", isBest: false, isWorst: false }
+      { name: "Illustrative lender A", value: "EMI", status: "Shorter tenure: higher EMI, lower total interest", isBest: false, isWorst: false },
+      { name: "Illustrative lender B", value: "EMI", status: "Longer tenure: lower EMI, higher total interest", isBest: false, isWorst: false },
+      { name: "Illustrative lender C", value: "EMI", status: "Compare across the same tenure", isBest: false, isWorst: false },
+      { name: "Illustrative lender D", value: "EMI", status: "Compare across the same tenure", isBest: false, isWorst: false }
     ],
-    highlight: "Saves up to ₹95,000 immediately in non-refundable up-front charges!"
-  },
-  {
-    title: "Smart Overdraft",
-    desc: "Slash interest on surplus",
-    badgeLeft: "Liquidity Linkage",
-    badgeRight: "Balance Offsets",
-    banks: [
-      { name: "Bank Alpha", value: "Unavailable", status: "Standard terms only (No OD)", isBest: false, isWorst: true },
-      { name: "Bank Beta (Parrot Rate)", value: "Smart Link", status: "Park & withdraw at zero cost", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "Premium OD", status: "Requires +0.45% markup key rate", isBest: false, isWorst: false },
-      { name: "Bank Delta", value: "Inactive", status: "Strict flat lock-in rules", isBest: false, isWorst: false }
-    ],
-    highlight: "Earn effective yield by parking savings, slicing years off interest!"
-  },
-  {
-    title: "Digital Flow",
-    desc: "100% paperless validation",
-    badgeLeft: "Digital Paperwork SLA",
-    badgeRight: "Branch touchpoints",
-    banks: [
-      { name: "Bank Alpha", value: "Semi-Digital", status: "Requires wet sign at end", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "100% Paperless", status: "Video KYC & 1-tap eSign", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "Paper-based", status: "Requires 3 branch visits", isBest: false, isWorst: true },
-      { name: "Bank Delta", value: "Semi-Digital", status: "Wet stamp mandates require courier", isBest: false, isWorst: false }
-    ],
-    highlight: "Skip repetitive ink signing sessions and physical banking hall cues!"
-  },
-  {
-    title: "CIBIL Thresholds",
-    desc: "Pre-checked safety margin",
-    badgeLeft: "Required Rating Range",
-    badgeRight: "Credit score guidelines",
-    banks: [
-      { name: "Bank Alpha", value: "750+ score", status: "Unforgiving hard limits", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "650+ score", status: "Algorithmic custom fits", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "700+ score", status: "Standard retail assessment", isBest: false, isWorst: false },
-      { name: "Bank Delta", value: "720+ score", status: "Strict automated rejection", isBest: false, isWorst: true }
-    ],
-    highlight: "Highly-inclusive underwriting ensures rates correspond and do not reject!"
-  },
-  {
-    title: "Disbursal Speed",
-    desc: "Algorithmic TAT matching",
-    badgeLeft: "Turnaround Duration",
-    badgeRight: "Milestone to Bank Cash",
-    banks: [
-      { name: "Bank Alpha", value: "8 Days TAT", status: "Manual document transit", isBest: false, isWorst: false },
-      { name: "Bank Beta (Parrot Rate)", value: "3 Days SLA", status: "Instant API checks", isBest: true, isWorst: false },
-      { name: "Bank Gamma", value: "11 Days TAT", status: "Bulk legal notary queues", isBest: false, isWorst: false },
-      { name: "Bank Delta", value: "14 Days TAT", status: "Heavy offline validation checks", isBest: false, isWorst: true }
-    ],
-    highlight: "Get funds disbursed 4 to 11 working days quicker than traditional flow!"
+    highlight: "Let users compare EMI and lifetime interest together."
   }
 ];
 
@@ -923,165 +871,96 @@ export function ParrotLanding({ onApply, loginWithGoogle, loginWithEmailOrMobile
       </nav>
 
       {/* SECTION 1: HERO BANNER */}
-      <section className="relative bg-white pt-24 pb-12 overflow-hidden px-4 sm:px-6 md:px-8">
-        <div className="w-full max-w-[1520px] mx-auto px-6 sm:px-10 lg:px-16 py-14 md:py-20 bg-gradient-to-br from-[#EEF2F6] via-white to-[#F1F5F9] border border-slate-200/60 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_30px_90px_rgba(0,0,0,0.03)] relative overflow-hidden">
-          {/* Ambient light glow spots */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-200/[0.22] rounded-full filter blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#10B981]/[0.05] rounded-full filter blur-[100px] pointer-events-none" />
-
-          <div className="grid lg:grid-cols-12 gap-12 items-center relative z-10">
-            {/* Left Content Column */}
-            <motion.div 
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="lg:col-span-7 space-y-6 sm:space-y-8"
+      <section className="relative bg-white pt-24 pb-16 px-4 sm:px-6 md:px-8">
+        <div className="w-full max-w-[1240px] mx-auto py-12 md:py-16">
+          <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55 }}
+              className="lg:col-span-7"
             >
-              <div className="space-y-4">
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-slate-200/60 rounded-full shadow-sm"
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/60 px-3 py-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-emerald-700">
+                  Transparent loan comparison
+                </span>
+              </div>
+
+              <h1 className="mt-6 max-w-3xl text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-[-0.04em] text-slate-950 leading-[1.04]">
+                Compare. Understand. <span className="text-emerald-600">Choose with confidence.</span>
+              </h1>
+
+              <p className="mt-5 max-w-2xl text-base sm:text-lg leading-7 text-slate-500">
+                Compare eligible loan options across lenders using rate, EMI, fees, tenure and other important terms — in one clear view.
+              </p>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => onApply()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-colors"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                  <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">India's Smartest Mortgage Engine</span>
-                </motion.div>
-                
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-sans font-extrabold tracking-tight text-slate-900 leading-[1.05]">
-                  Compare & secure <br />
-                  your home loan <span className="text-[#10B981] font-black italic">securely.</span>
-                </h1>
-                
-                <p className="text-sm sm:text-base text-slate-500 font-medium max-w-xl leading-relaxed">
-                  Start your mortgage journey on India's trusted platform. Get matched with top-tier lenders in minutes using <span className="text-slate-900 font-semibold">ParrotScore™</span>.
-                </p>
+                  Compare offers
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <a
+                  href="#calculators"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Calculate EMI
+                </a>
               </div>
 
-              <div className="hidden sm:flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
-                {isLoggedIn ? (
-                  <button 
-                    onClick={onGoToDashboard}
-                    className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold px-8 py-4 rounded-full text-xs uppercase tracking-widest shadow-lg shadow-[#10B981]/15 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    Go to Dashboard <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => onApply()}
-                    className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold px-8 py-4 rounded-full text-xs uppercase tracking-widest shadow-lg shadow-[#10B981]/15 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    Apply Now <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 sm:gap-8 pt-6 border-t border-slate-200/60 max-w-lg">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#10B981]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Zero Credit Score Impact</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Building className="w-5 h-5 text-[#10B981]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">25+ Direct Lenders</span>
-                </div>
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-2"><Check className="w-4 h-4 text-emerald-600" /> Clear lender terms</span>
+                <span className="inline-flex items-center gap-2"><Check className="w-4 h-4 text-emerald-600" /> Compare total cost</span>
+                <span className="inline-flex items-center gap-2"><Check className="w-4 h-4 text-emerald-600" /> No obligation to apply</span>
               </div>
             </motion.div>
 
-            {/* Right Graphic/Token Cluster Column */}
-            <div className="lg:col-span-5 relative hidden lg:flex items-center justify-center h-[380px] lg:h-[450px]">
-              {/* Spinning orbiting ring */}
-              <div className="absolute w-[320px] h-[320px] xl:w-[380px] xl:h-[380px] border border-slate-200/50 rounded-full pointer-events-none animate-[spin_50s_linear_infinite]" />
-              <div className="absolute w-[220px] h-[220px] xl:w-[260px] xl:h-[260px] border border-slate-200/80 border-dashed rounded-full pointer-events-none" />
-
-              {/* Central Premium Token (ParrotScore) */}
-              <motion.div 
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute z-10 w-44 h-44 xl:w-52 xl:h-52 rounded-full bg-gradient-to-br from-[#10B981]/5 via-white to-slate-100 border-4 border-white shadow-[0_24px_60px_rgba(16,185,129,0.08),inset_0_-10px_20px_rgba(0,0,0,0.03),inset_0_10px_20px_rgba(255,255,255,0.85)] flex flex-col items-center justify-center p-4"
-              >
-                {/* Concept 3: Concentric Pulse Rings radiating outward (Modern & Minimal) */}
-                <div className="absolute w-[230px] h-[230px] xl:w-[270px] xl:h-[270px] rounded-full border border-[#10B981]/15 pointer-events-none z-0 flex items-center justify-center select-none">
-                  {/* Inner pulse circle */}
-                  <motion.div 
-                    animate={{ scale: [0.93, 1.08, 0.93], opacity: [0.15, 0.45, 0.15] }}
-                    transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-0 rounded-full border-2 border-dashed border-[#10B981]/10"
-                  />
-                  
-                  {/* Outer pulse circle */}
-                  <motion.div 
-                    animate={{ scale: [1, 1.25, 1], opacity: [0.08, 0.28, 0.08] }}
-                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute w-[290px] h-[290px] xl:w-[340px] xl:h-[340px] rounded-full border border-[#10B981]/5"
-                  />
-
-                  {/* Elegant floating live offer banner nestled on the ring */}
-                  <div className="absolute -top-4 bg-white/95 border border-[#10B981]/25 rounded-full px-3 py-1 bg-gradient-to-r from-emerald-50/45 to-white shadow-[0_6px_20px_rgba(16,185,129,0.1)] flex items-center gap-1.5 whitespace-nowrap backdrop-blur-md">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
-                    </span>
-                    <span className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-700 font-sans">
-                      LIVE Offer: <span className="text-[#10B981]">{BANK_OFFERS_LIST[currentOfferIdx].bank}</span> <span className="text-slate-400 font-semibold px-0.5">•</span> {BANK_OFFERS_LIST[currentOfferIdx].offer}
-                    </span>
+            <motion.div
+              initial={{ opacity: 0, x: 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className="lg:col-span-5"
+            >
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 md:p-7">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900">How ParrotMoney works</p>
+                    <p className="mt-1 text-xs text-slate-500">A simple marketplace journey</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-slate-200 p-2">
+                    <Scale className="w-4 h-4 text-emerald-600" />
                   </div>
                 </div>
 
-                <div className="w-full h-full border-2 border-dashed border-[#10B981]/25 rounded-full flex flex-col items-center justify-center p-3 relative bg-gradient-to-b from-white to-slate-50/40 z-10">
-                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.25em] mb-1">ParrotScore™</span>
-                  <span className="text-4xl xl:text-5.5xl font-black text-slate-900 tracking-tighter italic leading-none">842</span>
-                  <div className="absolute -bottom-2.5 px-3 py-1 bg-[#10B981] text-white rounded-full text-[9px] font-bold uppercase tracking-widest shadow-md shadow-[#10B981]/20">
-                    Excellent
-                  </div>
+                <div className="mt-7 space-y-5">
+                  {[
+                    ["01", "Tell us what you need", "A few inputs help us understand the loan you are looking for."],
+                    ["02", "Compare the options", "See rates, EMI, fees, tenure and key terms side by side."],
+                    ["03", "Choose what fits", "Shortlist an option and continue with the lender application."]
+                  ].map(([step, title, desc]) => (
+                    <div key={step} className="flex gap-4">
+                      <span className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-500">
+                        {step}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{title}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">{desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </motion.div>
 
-              {/* Floating Token 1: 7.10%* ROI (Top Right) */}
-              <motion.div 
-                animate={{ y: [0, 16, 0], x: [0, 5, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                className="absolute top-10 right-10 xl:top-14 xl:right-14 z-20 w-24 h-24 rounded-full bg-gradient-to-br from-indigo-50 to-white hover:from-white border-2 border-white shadow-[0_15px_30px_rgba(79,70,229,0.08),inset_0_-5px_10px_rgba(0,0,0,0.02)] flex items-center justify-center flex-col cursor-default"
-              >
-                <TrendingDown className="w-5 h-5 text-[#10B981] mb-1" />
-                <span className="text-sm font-bold text-slate-800 leading-none">7.10%*</span>
-                <span className="text-[7.5px] font-extrabold text-[#10B981] uppercase tracking-wide mt-1">Min Rate</span>
-              </motion.div>
-
-              {/* Floating Token 2: Savings Tag (Bottom Left) */}
-              <motion.div 
-                animate={{ y: [0, -12, 0], x: [0, -8, 0] }}
-                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-12 left-10 xl:bottom-16 xl:left-14 z-20 w-22 h-22 rounded-full bg-gradient-to-br from-[#10B981]/5 via-white to-slate-50 border-2 border-white shadow-[0_15px_30px_rgba(0,0,0,0.05),inset_0_-5px_10px_rgba(0,0,0,0.02)] flex items-center justify-center flex-col cursor-default"
-              >
-                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Savings</span>
-                <span className="text-base font-black text-slate-800 italic mt-0.5">₹15.2L</span>
-                <span className="text-[7px] font-extrabold text-[#10B981] uppercase tracking-widest mt-1">Direct ROI</span>
-              </motion.div>
-
-              {/* Floating Token 3: LTV Stat (Top Left) */}
-              <motion.div 
-                animate={{ y: [0, 10, 0], x: [0, -5, 0] }}
-                transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-                className="absolute top-16 left-8 xl:top-24 xl:left-12 z-20 w-16 h-16 rounded-full bg-gradient-to-br from-[#EEF2F6] to-white border-2 border-white shadow-[0_10px_20px_rgba(0,0,0,0.04)] flex items-center justify-center flex-col cursor-default"
-              >
-                <span className="text-sm font-black text-slate-800">80%</span>
-                <span className="text-[7px] font-bold text-slate-450 uppercase tracking-wide">LTV Max</span>
-              </motion.div>
-
-              {/* Floating Token 4: Verified Badge (Bottom Right) */}
-              <motion.div 
-                animate={{ y: [0, -15, 0], x: [0, 6, 0] }}
-                transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                className="absolute bottom-12 right-12 xl:bottom-18 xl:right-16 z-20 w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-white border-2 border-white shadow-[0_12px_24px_rgba(16,185,129,0.06)] flex items-center justify-center flex-col cursor-default"
-              >
-                <ShieldCheck className="w-5 h-5 text-[#10B981] mb-0.5" />
-                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none">Instant</span>
-                <span className="text-[9px] font-black text-[#10B981] uppercase tracking-wider">Sanction</span>
-              </motion.div>
-            </div>
+                <div className="mt-7 border-t border-slate-200 pt-5">
+                  <p className="text-[11px] leading-5 text-slate-500">
+                    Rates and eligibility are indicative until confirmed by the relevant lender. Final terms are subject to lender assessment and applicable disclosures.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
-
-
         </div>
       </section>
 
