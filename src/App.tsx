@@ -1459,7 +1459,7 @@ function AnalysisPortal({ progress }: { progress: number }) {
 
         <div className="space-y-2">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-natural-sage tracking-tight italic leading-snug px-2">
-            Hold on, we are reviewing your data to best match the offer...
+            Hold on, we are preparing your comparison...
           </h2>
           <p className="text-xs sm:text-sm text-natural-muted font-medium max-w-sm mx-auto leading-relaxed px-2">
             We are preparing a transparent comparison using lender data and the assumptions you provided.
@@ -4821,92 +4821,31 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                      </div>
                    ) : activeAssessment && (
                      <div className="space-y-6 md:space-y-12 pt-4">
-                        {/* Eligibility overview & Assessment Pillars Card */}
-                        <div className="bg-white rounded-3xl border border-natural-border/70 p-6 md:p-8 shadow-xs space-y-6 md:space-y-8">
-                           {/* Top Section: Approval Confidence Circular Gauge & Status */}
-                           <div className="flex items-center justify-center sm:justify-start gap-4 md:gap-5">
-                              <div className="relative inline-block scale-95 shrink-0">
-                                 <svg className="w-20 h-20 transform -rotate-90">
-                                   <circle cx="40" cy="40" r="32" fill="transparent" stroke="#f1f5f9" strokeWidth="6.5" />
-                                   <motion.circle 
-                                     cx="40" cy="40" r="32" fill="transparent" stroke={activeAssessment.status === 'Low' ? '#ef4444' : '#10B981'} strokeWidth="6.5" 
-                                     strokeDasharray={201.06}
-                                     initial={{ strokeDashoffset: 201.06 }}
-                                     animate={{ strokeDashoffset: 201.06 - (201.06 * activeAssessment.score) / 100 }}
-                                     transition={{ duration: 1.2, ease: "easeOut" }}
-                                   />
-                                 </svg>
-                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className={cn("text-xl font-black tabular-nums leading-none tracking-tight", activeAssessment.status === 'Low' ? 'text-red-500' : 'text-slate-900')}>{activeAssessment.score}%</span>
-                                    <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-500 mt-0.5">PROFILE</span>
-                                 </div>
-                              </div>
-                              <div className="space-y-1 text-left">
-                                 <p className="text-[10.5px] md:text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Approval Confidence</p>
-                                 <div className="flex items-center gap-2">
-                                    <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", activeAssessment.status === 'High' ? 'bg-emerald-500' : activeAssessment.status === 'Medium' ? 'bg-amber-500' : 'bg-red-500')} />
-                                    <span className={cn("text-base md:text-lg font-black uppercase tracking-wide", activeAssessment.status === 'Low' ? 'text-red-500' : 'text-slate-900')}>
-                                       {activeAssessment.status} Potential
-                                    </span>
-                                 </div>
-                              </div>
-                           </div>
-
-                           {/* Bottom Section: 5 Assessment Pillars in one horizontal row across the bottom */}
-                           <div className="grid grid-cols-5 gap-1 sm:gap-3 md:gap-4 items-center justify-between pt-5 border-t border-slate-100">
-                              {[
-                                { key: 'income', label: 'INCOME' },
-                                { key: 'age', label: 'AGE' },
-                                { key: 'credit', label: 'CREDIT' },
-                                { key: 'continuity', label: 'WORK' },
-                                { key: 'property', label: 'PROPERTY' }
-                              ].map(({ key, label }, idx) => {
-                                const data = (activeAssessment.categories as any)?.[key] || { status: 'Good', message: 'Ready' };
-                                const starCount = data.status === 'Excellent' ? 5 : data.status === 'Good' ? 4 : data.status === 'Average' ? 3 : 2;
-                                return (
-                                  <div key={key} className="flex items-center justify-center relative">
-                                    {idx > 0 && <div className="absolute -left-0.5 sm:-left-1.5 md:-left-2 top-1/2 -translate-y-1/2 h-7 sm:h-8 w-px bg-slate-200/80" />}
-                                    <div className="text-center px-0.5 sm:px-1" title={`${label}: ${data.status} (${starCount}/5)`}>
-                                      <p className="text-[10px] sm:text-xs md:text-sm font-black text-slate-800 tracking-wider uppercase">{label}</p>
-                                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 mt-1.5">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                          <Star
-                                            key={star}
-                                            className={cn(
-                                              "w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 shrink-0",
-                                              star <= starCount
-                                                ? "fill-amber-400 text-amber-400 stroke-amber-400"
-                                                : "fill-slate-100 text-slate-200 stroke-slate-200"
-                                            )}
-                                          />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                           </div>
+                        {/* Transparent affordability summary */}
+                        <div className="bg-white rounded-3xl border border-natural-border/70 p-6 md:p-8 shadow-xs space-y-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Your comparison basis</p>
+                              <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">A clear view of the inputs behind your estimate.</h3>
+                            </div>
+                            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-[9px] font-black uppercase tracking-wider text-slate-600 shrink-0">Illustrative</div>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-slate-100">
+                            <div><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Loan amount</p><p className="text-sm font-black text-slate-900 mt-1">₹{Number(formData.loanAmount || 0).toLocaleString('en-IN')}</p></div>
+                            <div><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Property value</p><p className="text-sm font-black text-slate-900 mt-1">₹{Number(formData.propertyValue || 0).toLocaleString('en-IN')}</p></div>
+                            <div><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Tenure</p><p className="text-sm font-black text-slate-900 mt-1">{formData.tenure || '—'} years</p></div>
+                            <div><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Credit score</p><p className="text-sm font-black text-slate-900 mt-1">{formData.cibilScore || 'Not provided'}</p></div>
+                          </div>
+                          <p className="text-[10px] md:text-xs text-slate-500 leading-relaxed">ParrotMoney does not determine loan approval. Lenders independently assess income, credit history, property, documentation, affordability and other applicable criteria.</p>
                         </div>
 
-                        {/* Recommendations */}
-                        <div className="space-y-3 pt-3 md:pt-4 text-left w-full">
-                           <h5 className="text-[9px] md:text-[10px] font-black text-natural-muted uppercase tracking-[0.3em] flex items-center gap-3 justify-start">
-                              {activeAssessment.status === 'Low' ? 'How to Become Eligible' : 'Eligibility Improvement Tips'}
-                              <div className="h-px bg-natural-border flex-1" />
-                           </h5>
-                           <div className="flex flex-wrap justify-start gap-2 md:gap-3">
-                              {activeAssessment.recommendations.map((rec, i) => (
-                                <div key={i} className={cn(
-                                  "flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black border shadow-sm hover:shadow-md transition-all cursor-default",
-                                  activeAssessment.status === 'Low' 
-                                    ? "bg-amber-50 text-amber-900 border-amber-100" 
-                                    : "bg-natural-terracotta/5 text-natural-sage border-natural-terracotta/10"
-                                )}>
-                                   {activeAssessment.status === 'Low' ? <Zap className="w-3.5 h-3.5 text-amber-600" /> : <CheckCircle2 className="w-3.5 h-3.5 text-natural-terracotta" />} 
-                                   {rec}
-                                </div>
-                              ))}
-                           </div>
+                        <div className="space-y-3 pt-1 md:pt-2 text-left w-full">
+                          <h5 className="text-[9px] md:text-[10px] font-black text-natural-muted uppercase tracking-[0.3em] flex items-center gap-3">How to read the comparison<div className="h-px bg-natural-border flex-1" /></h5>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                            <div className="bg-white border border-natural-border rounded-2xl p-4"><p className="text-[10px] font-black text-natural-sage uppercase tracking-wider">Rate</p><p className="text-[10px] text-natural-muted mt-1.5 leading-relaxed">Compare the lender's disclosed rate range and confirm whether the final rate is fixed or floating.</p></div>
+                            <div className="bg-white border border-natural-border rounded-2xl p-4"><p className="text-[10px] font-black text-natural-sage uppercase tracking-wider">Total cost</p><p className="text-[10px] text-natural-muted mt-1.5 leading-relaxed">Review EMI, total repayment, interest and processing fees together—not the headline rate alone.</p></div>
+                            <div className="bg-white border border-natural-border rounded-2xl p-4"><p className="text-[10px] font-black text-natural-sage uppercase tracking-wider">Terms</p><p className="text-[10px] text-natural-muted mt-1.5 leading-relaxed">Open policy details to check eligibility, prepayment terms, documents and disclosed lender conditions.</p></div>
+                          </div>
                         </div>
 
                         {/* Home Loan Overdraft Advisory Section (SBI MaxGain / HDFC MaxSaver) */}
@@ -5023,7 +4962,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
                    )}
                 </div>
 
-                {activeAssessment?.status === 'Low' ? (
+                {false ? (
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
