@@ -15,6 +15,7 @@ interface LoginPageProps {
   onAdminLoginSuccess?: (adminEmail?: string) => void;
   onLoginSuccess?: (role: 'customer' | 'admin') => void;
   onGoogleSignIn?: () => void;
+  onGuestContinue?: () => Promise<void> | void;
   initialMode?: 'customer' | 'admin';
 }
 
@@ -25,6 +26,7 @@ export function LoginPage({
   onAdminLoginSuccess,
   onLoginSuccess,
   onGoogleSignIn,
+  onGuestContinue,
   initialMode = 'customer'
 }: LoginPageProps) {
   const handleBack = onBack || onBackToHome || (() => window.history.back());
@@ -287,7 +289,8 @@ export function LoginPage({
                           setCustomerError('');
                           setIsCustomerLoading(true);
                           try {
-                            await onGoogleSignIn?.();
+                            if (!onGuestContinue) throw new Error('Guest sign-in is not configured.');
+                            await onGuestContinue();
                             if (onLoginSuccess) onLoginSuccess('customer');
                           } catch (err: any) {
                             setCustomerError(err?.message || 'Secure guest session could not be created.');
