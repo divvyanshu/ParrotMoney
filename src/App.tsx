@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ChatInterface } from './components/ChatInterface';
+import { LeadCaptureFlow } from './components/LeadCaptureFlow';
+import { LeadProfile } from './services/leadGenerationService';
 import { MortgageCalculator as HomeLoanCalculator } from './components/MortgageCalculator';
 import { Logo } from './components/Logo';
 import { 
@@ -6041,6 +6043,8 @@ function AppContent() {
   const [loginInitialRole, setLoginInitialRole] = React.useState<'customer' | 'admin'>('customer');
   const [initialAppTab, setInitialAppTab] = React.useState<'loans' | 'dashboard' | 'calculator' | 'recommendations' | 'admin' | 'about' | 'settings' | 'calendar' | 'workspace'>('loans');
   const [showCookieSettings, setShowCookieSettings] = React.useState(false);
+  const [showLeadCapture, setShowLeadCapture] = React.useState(false);
+  const [pendingLead, setPendingLead] = React.useState<LeadProfile | null>(null);
   
   if (loading) return (
     <div className="h-screen w-screen flex flex-col items-center justify-center space-y-4 bg-natural-bg">
@@ -6052,18 +6056,45 @@ function AppContent() {
   );
 
   const handleStartApp = async (category?: string) => {
-    if (category) {
-      localStorage.setItem('pendingLoanCategory', category);
-    }
+    if (category) localStorage.setItem('pendingLoanCategory', category);
+    setShowLeadCapture(true);
+  };
 
+  const handleLeadComplete = async (profile: LeadProfile) => {
+    setPendingLead(profile);
+    setShowLeadCapture(false);
     try {
       await continueAsGuest();
       setInitialAppTab('loans');
       setViewState('app');
     } catch (err) {
       console.error('Could not establish guest session:', err);
+      setShowLeadCapture(true);
     }
   };
+
+  React.useEffect(() => {
+    if (!user || !pendingLead) return;
+    const persistLead = async () => {
+      try {
+        const { creditScore, ...leadWithoutOptionalScore } = pendingLead;
+        const leadData = {
+          ...leadWithoutOptionalScore,
+          ...(creditScore ? { creditScore } : {}),
+          userId: user.uid,
+          comparisonContext: pendingLead.comparisonContext,
+        };
+        await addDoc(collection(db, 'leads'), leadData);
+        localStorage.setItem('parrot_last_lead_id', pendingLead.leadId);
+        setPendingLead(null);
+      } catch (error) {
+        console.error('Lead profile could not be persisted:', error);
+        localStorage.setItem('parrot_pending_lead', JSON.stringify(pendingLead));
+        setPendingLead(null);
+      }
+    };
+    void persistLead();
+  }, [user, pendingLead]);
 
   const handleBackToLanding = () => {
     setViewState('landing');
@@ -6109,6 +6140,13 @@ function AppContent() {
         />
       ) : (
         <AuthenticatedApp onBackToLanding={handleBackToLanding} initialTab={initialAppTab} />
+      )}
+      {showLeadCapture && (
+        <LeadCaptureFlow
+          initialProduct={localStorage.getItem('pendingLoanCategory') || undefined}
+          onComplete={handleLeadComplete}
+          onClose={() => setShowLeadCapture(false)}
+        />
       )}
       <AuthErrorNotification />
       <CookieConsentModal forceOpen={showCookieSettings} onCloseForceOpen={() => setShowCookieSettings(false)} />
