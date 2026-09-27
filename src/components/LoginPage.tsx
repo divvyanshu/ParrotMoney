@@ -35,6 +35,7 @@ export function LoginPage({
   const [isCustomerLoading, setIsCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
 
   // Admin mode is authenticated only through the real Firebase account session.
   const [isAdminLoading, setIsAdminLoading] = useState(false);
