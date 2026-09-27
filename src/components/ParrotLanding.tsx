@@ -480,8 +480,6 @@ export function ParrotLanding({ onApply, loginWithGoogle, loginWithEmailOrMobile
   const [selectedFactorIdx, setSelectedFactorIdx] = useState(0);
   const [selectedArticle, setSelectedArticle] = useState<any | null>(null);
 
-  const [currentOfferIdx, setCurrentOfferIdx] = useState(0);
-
   const newsScrollRef = useRef<HTMLDivElement>(null);
   const productDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -504,13 +502,6 @@ export function ParrotLanding({ onApply, loginWithGoogle, loginWithEmailOrMobile
       });
     }
   };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentOfferIdx((prev) => (prev + 1) % BANK_OFFERS_LIST.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
