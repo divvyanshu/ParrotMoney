@@ -6,19 +6,19 @@
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   
   /* International Professional Palette (Reskinning Natural names for compatibility) */
-  --color-natural-bg: #EFF6FF;
+  --color-natural-bg: #F8FAFC;
   --color-natural-panel: #FFFFFF;
   --color-natural-border: #E2E8F0;
-  --color-natural-sage: #0F172A; /* Deep Midnight Ink */
-  --color-natural-terracotta: #10B981; /* Emerald Accent */
+  --color-natural-sage: #0B1220; /* Deep Midnight Ink */
+  --color-natural-terracotta: #0EA66A; /* Emerald Accent */
   --color-natural-muted: #64748B; /* Slate Blue Muted */
-  --color-natural-text: #1E293B; /* Slate Deep Text */
+  --color-natural-text: #172033; /* Slate Deep Text */
   /* ParrotMoney Brand Colors */
-  --color-parrot-green: #10B981;
-  --color-parrot-green-logo: #10B981;
-  --color-parrot-blue: #0071BC;
-  --color-parrot-navy: #1A2E4A;
-  --color-parrot-bg: #F0FFF6;
+  --color-parrot-green: #0EA66A;
+  --color-parrot-green-logo: #0EA66A;
+  --color-parrot-blue: #1769AA;
+  --color-parrot-navy: #0B1F33;
+  --color-parrot-bg: #F6FBF8;
 
   --animate-marquee: marquee 40s linear infinite;
   --animate-marquee-reverse: marquee-reverse 40s linear infinite;
@@ -37,6 +37,20 @@
 @layer base {
   body {
     @apply font-sans antialiased bg-natural-bg text-natural-text selection:bg-natural-sage selection:text-white;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-parrot-green);
+    outline-offset: 3px;
   }
 
   /* Remove spin buttons from number inputs */
@@ -55,6 +69,18 @@
 @layer components {
   .prose {
     line-height: 1.6;
+  }
+
+  /* Keep marketplace motion purposeful and respect OS accessibility settings. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
   
   .custom-scrollbar-thin::-webkit-scrollbar {
@@ -117,7 +143,6 @@
 }
 
 .gsi-material-button .gsi-material-button-content-wrapper {
-  -align-items: center;
   align-items: center;
   display: flex;
   flex-direction: row;
