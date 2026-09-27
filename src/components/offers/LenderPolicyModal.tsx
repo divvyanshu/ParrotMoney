@@ -77,7 +77,7 @@ export const LenderPolicyModal: React.FC<LenderPolicyModalProps> = ({
                   {lender.name}
                 </h3>
                 <p className="text-xs text-stone-500 font-medium">
-                  Official Institutional Credit Policy & Underwriting Norms
+                  Lender information & comparison details
                 </p>
               </div>
             </div>
@@ -96,7 +96,7 @@ export const LenderPolicyModal: React.FC<LenderPolicyModalProps> = ({
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/60 text-center">
-                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">Dynamic Rate</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">Lender Rate Range</span>
                 <span className="text-xl font-black text-emerald-700">{lender.rate}</span>
                 <span className="text-[9px] text-stone-400 block mt-0.5">{lender.rawRateRange}</span>
               </div>
@@ -106,14 +106,14 @@ export const LenderPolicyModal: React.FC<LenderPolicyModalProps> = ({
                 <span className="text-[9px] text-stone-400 block mt-0.5">per month</span>
               </div>
               <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/60 text-center">
-                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">Match Fit</span>
-                <span className="text-xl font-black text-emerald-600">{lender.finalScore}%</span>
-                <span className="text-[9px] text-emerald-700 font-bold block mt-0.5">{lender.probability} Odds</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">Total Repayment*</span>
+                <span className="text-lg font-black text-stone-900">{lender.totalRepayment ? '₹' + lender.totalRepayment.toLocaleString('en-IN') : '—'}</span>
+                <span className="text-[9px] text-stone-400 block mt-0.5">illustrative</span>
               </div>
               <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/60 text-center">
-                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">Typical TAT</span>
-                <span className="text-xl font-black text-stone-900">{lender.processingTime}</span>
-                <span className="text-[9px] text-stone-400 block mt-0.5">from submission</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">Comparison Status</span>
+                <span className="text-sm font-black text-emerald-700">{lender.fitStatus}</span>
+                <span className="text-[9px] text-stone-400 block mt-0.5">{lender.rateType}</span>
               </div>
             </div>
 
@@ -122,7 +122,7 @@ export const LenderPolicyModal: React.FC<LenderPolicyModalProps> = ({
               <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-amber-900 text-xs font-black uppercase tracking-wider">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Current Promotional Scheme & Concessions</span>
+                  <span>Lender Scheme / Disclosure</span>
                 </div>
                 <p className="text-xs md:text-sm text-amber-900/90 leading-relaxed font-medium">
                   {lender.currentScheme}
@@ -218,7 +218,7 @@ export const LenderPolicyModal: React.FC<LenderPolicyModalProps> = ({
               <div className="space-y-2">
                 <h4 className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Algorithm Fit Reasons</span>
+                  <span>Why this appears</span>
                 </h4>
                 <div className="space-y-1.5">
                   {lender.matchReasons.map((reason, idx) => (
