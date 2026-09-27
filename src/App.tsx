@@ -659,17 +659,12 @@ function DashboardView({
       loanAmount: 4500000,
       city: 'Mumbai',
       propertyType: 'Apartment',
-      selectedBank: {
-        name: 'HDFC Bank',
-        rate: '8.45%',
-        processingTime: '7-10 Days',
-        features: ['Fast Processing', 'Digital Journey', 'Max Tenure']
-      },
+      selectedBank: null,
       currentStage: 'technical_inspection' as LoanStageId,
       status: 'in_progress',
-      fullName: profile?.name || 'Divyanshu Sharma',
-      email: profile?.email || user?.email || 'divvyanshu@gmail.com',
-      mobile: profile?.mobile || '+91 98765 43210',
+      fullName: profile?.name || 'Guest borrower',
+      email: profile?.email || user?.email || '',
+      mobile: profile?.mobile || '',
       createdAt: { toDate: () => new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) }
     };
   }, [activeLoan, profile, user]);
@@ -885,7 +880,7 @@ function DashboardView({
       newStageId,
       profile?.email || user?.email || 'divvyanshu@gmail.com',
       profile?.mobile || '+91 98765 43210',
-      effectiveLoan.selectedBank?.name || 'HDFC Bank',
+      effectiveLoan.selectedBank?.name || 'Not selected',
       effectiveLoan.loanAmount || 4500000
     );
 
@@ -895,7 +890,7 @@ function DashboardView({
   // Trigger quick alert simulation
   const handleTriggerQuickAlert = (channel: CommunicationChannel) => {
     const config = STAGE_CONFIGS[selectedStageId];
-    const bank = effectiveLoan.selectedBank?.name || 'HDFC Bank';
+    const bank = effectiveLoan.selectedBank?.name || 'Not selected';
     const amount = effectiveLoan.loanAmount ? `₹${effectiveLoan.loanAmount.toLocaleString('en-IN')}` : '₹45,00,000';
     const loanNum = effectiveLoan.id?.slice(-8).toUpperCase();
 
@@ -1761,8 +1756,6 @@ function AdminPortal({
   const [bankRate, setBankRate] = useState('');
   const [bankProcessingTime, setBankProcessingTime] = useState('');
   const [bankFeatures, setBankFeatures] = useState('');
-  const [bankScore, setBankScore] = useState(90);
-  const [bankRating, setBankRating] = useState(4.5);
   const [savingBank, setSavingBank] = useState(false);
 
   const resetForm = () => {
@@ -1770,8 +1763,6 @@ function AdminPortal({
     setBankRate('');
     setBankProcessingTime('');
     setBankFeatures('');
-    setBankScore(90);
-    setBankRating(4.5);
     setIsAddingBank(false);
     setEditingBank(null);
   };
@@ -1782,8 +1773,6 @@ function AdminPortal({
     setBankRate(bank.rate);
     setBankProcessingTime(bank.processingTime || '');
     setBankFeatures(Array.isArray(bank.features) ? bank.features.join(', ') : '');
-    setBankScore(bank.score || 90);
-    setBankRating(bank.rating || 4.5);
   };
 
   const handleSaveBank = async (e: React.FormEvent) => {
@@ -1798,10 +1787,10 @@ function AdminPortal({
       const payload = {
         name: bankName.trim(),
         rate: bankRate.trim(),
-        processingTime: bankProcessingTime.trim() || '10-15 Days',
+        processingTime: bankProcessingTime.trim(),
         features: bankFeatures.split(',').map(f => f.trim()).filter(Boolean),
-        rating: Number(bankRating) || 4.5,
-        score: Number(bankScore) || 90
+        source: 'Admin-entered lender feed',
+        updatedAt: new Date().toISOString()
       };
 
       if (editingBank) {
@@ -2090,7 +2079,7 @@ function AdminPortal({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold text-natural-sage italic">Live Lender Data Feed</h3>
-            <p className="text-xs text-natural-muted font-medium">Control ROI rates, features, and target scoring metrics for recommendation engines.</p>
+            <p className="text-xs text-natural-muted font-medium">Maintain lender-supplied rates, fees, terms and source metadata used by the comparison experience.</p>
           </div>
           {!isAddingBank && !editingBank && (
             <button 
@@ -2144,30 +2133,6 @@ function AdminPortal({
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-natural-muted">Internal Score (0 - 100)</label>
-                <input 
-                  type="number" 
-                  value={bankScore}
-                  onChange={e => setBankScore(Number(e.target.value))}
-                  min="0"
-                  max="100"
-                  className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-natural-sage focus:outline-none focus:ring-1 focus:ring-natural-sage transition-all text-sm font-bold text-natural-sage"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-natural-muted">Customer Rating (1 - 5)</label>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  value={bankRating}
-                  onChange={e => setBankRating(Number(e.target.value))}
-                  min="1"
-                  max="5"
-                  className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-natural-sage focus:outline-none focus:ring-1 focus:ring-natural-sage transition-all text-sm font-bold text-natural-sage"
-                />
-              </div>
 
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-natural-muted">Features (Separated with commas)</label>
@@ -2206,8 +2171,8 @@ function AdminPortal({
                   <tr className="border-b border-natural-border/50">
                     <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted">Lender Details</th>
                     <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted">Interest ROI</th>
-                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted">Processing Speed</th>
-                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted">Score / Rating</th>
+                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted">Processing Time</th>
+                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted">Data Source</th>
                     <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-natural-muted text-right">Admin Actions</th>
                   </tr>
                 </thead>
@@ -2225,13 +2190,8 @@ function AdminPortal({
                         </div>
                       </td>
                       <td className="px-10 py-8 font-black text-sm text-natural-terracotta">{b.rate}</td>
-                      <td className="px-10 py-8 font-semibold text-xs text-natural-muted">{b.processingTime || 'N/A'}</td>
-                      <td className="px-10 py-8 font-mono text-xs text-natural-muted">
-                        <div className="space-y-1">
-                          <div>Match score: <strong className="text-natural-sage">{b.score}</strong></div>
-                          <div>Customer score: ★{b.rating}</div>
-                        </div>
-                      </td>
+                      <td className="px-10 py-8 font-semibold text-xs text-natural-muted">{b.processingTime || 'Not disclosed'}</td>
+                      <td className="px-10 py-8 font-mono text-xs text-natural-muted">{b.source || 'Legacy feed — verify before publishing'}</td>
                       <td className="px-10 py-8 text-right space-x-2">
                         <button 
                           onClick={() => handleEditBankClick(b)}
@@ -2270,9 +2230,9 @@ function AdminPortal({
         <div>
           <h3 className="text-xl font-bold text-natural-sage flex items-center gap-2">
             <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs">🛠️</span>
-            Algorithmic Scoring & Credit Parameters
+            Comparison Rules & Data Parameters
           </h3>
-          <p className="text-xs text-natural-muted font-medium mt-1">Fine-tune the scoring multipliers, CIBIL penalties, and credit rules used across calculations in real-time.</p>
+          <p className="text-xs text-natural-muted font-medium mt-1">Maintain comparison assumptions used by calculators. These settings do not create lender rankings, approval probabilities, or synthetic lender rates.</p>
         </div>
 
         <form onSubmit={handleSaveParams} className="bg-white p-8 md:p-12 rounded-[2rem] border border-natural-border shadow-2xl space-y-8">
@@ -2288,7 +2248,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Profiles below this threshold trigger scoring deductions.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Used only as a configurable reference for borrower guidance.</p>
             </div>
 
             <div className="space-y-2">
@@ -2300,7 +2260,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Sub-threshold penalty subtracted from total match score.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Legacy field retained for compatibility; it does not change lender ranking.</p>
             </div>
 
             <div className="space-y-2">
@@ -2312,7 +2272,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Penalise if current Age + desired Loan Tenure exceeds this.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Used as a reference input; lender-specific age rules are shown from the lender dataset.</p>
             </div>
 
             <div className="space-y-2">
@@ -2324,7 +2284,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Penalty factor per single year exceeding max age.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Legacy field retained for compatibility; it does not create a lender score.</p>
             </div>
 
             <div className="space-y-2">
@@ -2338,7 +2298,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Deduct matching score for high Loan-to-Value ratios.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Used as a reference input; LTV should be confirmed against the selected lender's policy.</p>
             </div>
 
             <div className="space-y-2">
@@ -2352,7 +2312,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Threshold limit of combined income usable for EMIs.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Calculator reference only; actual lender affordability assessment may differ.</p>
             </div>
 
             <div className="space-y-2">
@@ -2365,7 +2325,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Discount or boost combined household co-borrower income.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Calculator assumption only; no lender ranking is created.</p>
             </div>
 
             <div className="space-y-2">
@@ -2377,7 +2337,7 @@ function AdminPortal({
                 className="w-full px-5 py-3 rounded-xl border border-natural-border hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-bold text-indigo-950"
                 required
               />
-              <p className="text-[9px] font-medium text-natural-muted/70">Bonus match score if applicant has an active account at named lender.</p>
+              <p className="text-[9px] font-medium text-natural-muted/70">Relationship context may be shown as a factor; no score is added.</p>
             </div>
           </div>
 
@@ -2445,7 +2405,7 @@ function AdminPortal({
               view === 'algorithm' ? "bg-white text-indigo-700 shadow-md animate-pulse" : "text-natural-muted hover:text-natural-sage"
             )}
           >
-            Algorithm & Rules
+            Comparison Rules
           </button>
         </div>
       </div>
@@ -2868,30 +2828,8 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
       setIsBanksLoading(false);
 
       if (snapshot.empty) {
-        console.log("Seeding default lender offers data feed...");
-        try {
-          const { doc: fDoc, setDoc } = await import('firebase/firestore');
-          const defaults = [
-            { id: 'sbi', name: 'SBI', rate: '8.40%', features: ['Lowest Rates', 'No Hidden Costs', 'Govt Trust'], processingTime: '15-20 Days', rating: 4.8, score: 95 },
-            { id: 'hdfc_bank', name: 'HDFC Bank', rate: '8.45%', features: ['Fast Processing', 'Digital Journey', 'Max Tenure'], processingTime: '7-10 Days', rating: 4.7, score: 92 },
-            { id: 'icici_bank', name: 'ICICI Bank', rate: '8.50%', features: ['Pre-approved Offers', 'Easy Top-up', 'Instant App'], processingTime: '5-8 Days', rating: 4.6, score: 88 },
-            { id: 'axis_bank', name: 'Axis Bank', rate: '8.55%', features: ['Flexible Tenure', 'Balance Transfer', 'Gift Schemes'], processingTime: '10-12 Days', rating: 4.5, score: 82 },
-            { id: 'lic_housing', name: 'LIC Housing', rate: '8.60%', features: ['Govt Trust', 'Long Tenure', 'Minimal Docs'], processingTime: '18-25 Days', rating: 4.3, score: 78 }
-          ];
-          for (const bank of defaults) {
-            await setDoc(fDoc(db, 'banks', bank.id), {
-              name: bank.name,
-              rate: bank.rate,
-              features: bank.features,
-              processingTime: bank.processingTime,
-              rating: bank.rating,
-              score: bank.score
-            });
-          }
-        } catch (seedErr) {
-          console.error("Failed to seed default banks:", seedErr);
-        }
-      }
+        // No synthetic lender feed is seeded. Comparison data must come from a maintained source.
+        console.info("No custom lender feed configured; using the maintained comparison dataset.");
     }, (error) => {
       console.warn("Firestore error listing banks:", error);
       setIsBanksLoading(false);
