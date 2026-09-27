@@ -2,285 +2,47 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isBootstrapAdmin() { return isSignedIn() && request.auth.token.email == 'admin@parrotmoney.in' && request.auth.token.email_verified == true; }
+    function isAdmin() { return isSignedIn() && (request.auth.token.admin == true || isBootstrapAdmin()); }
+    function isStaff() { return isAdmin() || (isSignedIn() && request.auth.token.staff == true); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidUser(data) { return data.keys().hasAll(['id','name','email','role','createdAt']) && data.keys().size() <= 8 && data.id is string && data.id.size() <= 128 && data.name is string && data.name.size() <= 200 && data.email is string && data.email.size() <= 256 && data.role is string && (data.role == 'client' || data.role == 'staff' || data.role == 'admin') && data.createdAt is string && data.createdAt.size() <= 50; }
+    function isValidLoan(data) { return data.keys().hasAll(['userId','status','createdAt','updatedAt']) && data.keys().size() <= 40 && data.userId is string && data.userId.size() <= 128 && data.status is string && (data.status == 'draft' || data.status == 'submitted' || data.status == 'pending_review' || data.status == 'approved' || data.status == 'rejected') && data.createdAt is timestamp && data.updatedAt is timestamp; }
+    function isValidDocument(data) { return data.keys().hasAll(['id','loanId','name','type','url','status','uploadedAt']) && data.keys().size() <= 10 && data.id is string && data.id.size() <= 128 && data.loanId is string && data.loanId.size() <= 128 && data.name is string && data.name.size() <= 256 && data.type is string && data.type.size() <= 100 && data.url is string && data.url.size() <= 2048 && data.status is string && (data.status == 'pending' || data.status == 'verified' || data.status == 'rejected') && data.uploadedAt is string && data.uploadedAt.size() <= 50; }
+    function isValidNotification(data) { return data.keys().hasAll(['id','userId','message','type','read','createdAt']) && data.keys().size() <= 8 && data.id is string && data.id.size() <= 128 && data.userId is string && data.userId.size() <= 128 && data.message is string && data.message.size() <= 1000 && data.type is string && (data.type == 'milestone' || data.type == 'alert' || data.type == 'info') && data.read is bool && data.createdAt is string && data.createdAt.size() <= 50; }
+    function isValidLenderRating(data) { return data.keys().hasAll(['lenderName','userId','loanId','rating','createdAt']) && data.keys().size() <= 7 && data.lenderName is string && data.lenderName.size() <= 256 && data.userId is string && data.userId.size() <= 128 && data.loanId is string && data.loanId.size() <= 128 && data.rating is number && data.rating >= 1 && data.rating <= 5 && data.createdAt is timestamp; }
+    function isValidBank(data) { return data.keys().hasAll(['name','rate','processingTime','rating','score']) && data.keys().size() <= 8 && data.name is string && data.name.size() <= 100 && data.rate is string && data.rate.size() <= 20 && data.processingTime is string && data.processingTime.size() <= 100 && data.rating is number && data.rating >= 0 && data.rating <= 5 && data.score is number && data.score >= 0 && data.score <= 100; }
+    function isValidLead(data) { return data.keys().hasAll(['userId','leadId','product','loanAmount','propertyValue','tenureYears','city','fullName','mobile','email','employmentType','monthlyIncome','existingEmi','consent','lifecycleStage','intentSignals','profileCompleteness','createdAt','updatedAt']) && data.keys().size() <= 24 && data.userId is string && data.userId.size() <= 128 && data.leadId is string && data.leadId.size() <= 64 && data.product is string && data.product.size() <= 100 && data.loanAmount is number && data.loanAmount >= 0 && data.loanAmount <= 1000000000 && data.propertyValue is number && data.propertyValue >= 0 && data.propertyValue <= 5000000000 && data.tenureYears is number && data.tenureYears >= 1 && data.tenureYears <= 40 && data.city is string && data.city.size() <= 100 && data.fullName is string && data.fullName.size() <= 200 && data.mobile is string && data.mobile.size() <= 20 && data.email is string && data.email.size() <= 256 && data.employmentType is string && data.employmentType.size() <= 50 && data.monthlyIncome is number && data.monthlyIncome >= 0 && data.monthlyIncome <= 100000000 && data.existingEmi is number && data.existingEmi >= 0 && data.existingEmi <= 100000000 && data.consent is map && data.lifecycleStage is string && data.intentSignals is list && data.intentSignals.size() <= 20 && data.profileCompleteness is number && data.profileCompleteness >= 0 && data.profileCompleteness <= 100 && data.createdAt is string && data.createdAt.size() <= 50 && data.updatedAt is string && data.updatedAt.size() <= 50; }
+    function isValidLeadEvent(data) { return data.keys().hasAll(['eventId','leadId','userId','type','occurredAt','actor']) && data.keys().size() <= 10 && data.eventId is string && data.eventId.size() <= 64 && data.leadId is string && data.leadId.size() <= 64 && data.userId is string && data.userId.size() <= 128 && data.type is string && data.type in ['comparison_viewed','offer_compared','offer_shortlisted','offer_requested','application_started','staff_note','contact_attempt'] && data.occurredAt is string && data.occurredAt.size() <= 50 && data.actor is string && data.actor in ['customer','staff','system']; }
+    function isValidMarketCampaign(data) { return data.keys().hasAll(['lenderName','campaignTitle','channel','statedRate','scrapedAt','status']) && data.keys().size() <= 16 && data.lenderName is string && data.lenderName.size() <= 200 && data.campaignTitle is string && data.campaignTitle.size() <= 256 && data.channel is string && data.channel.size() <= 100 && data.statedRate is string && data.statedRate.size() <= 100 && data.scrapedAt is string && data.scrapedAt.size() <= 80 && data.status is string && data.status.size() <= 50; }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Temporary bootstrap admin. Replace with Firebase custom claims before
-    // production role-management is enabled.
-    function isBootstrapAdmin() {
-      return isSignedIn()
-        && request.auth.token.email == 'admin@parrotmoney.in'
-        && request.auth.token.email_verified == true;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.admin == true ||
-        isBootstrapAdmin()
-      );
-    }
-
-    function isStaff() {
-      return isAdmin() || (
-        isSignedIn() && request.auth.token.staff == true
-      );
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function isValidUser(data) {
-      return data.keys().hasAll(['id', 'name', 'email', 'role', 'createdAt'])
-        && data.keys().size() <= 8
-        && data.id is string && data.id.size() <= 128
-        && data.name is string && data.name.size() <= 200
-        && data.email is string && data.email.size() <= 256
-        && data.role is string && (data.role == 'client' || data.role == 'staff' || data.role == 'admin')
-        && data.createdAt is string && data.createdAt.size() <= 50;
-    }
-
-    function isValidLoan(data) {
-      return data.keys().hasAll(['userId', 'status', 'createdAt', 'updatedAt'])
-        && data.keys().size() <= 40
-        && data.userId is string && data.userId.size() <= 128
-        && data.status is string
-        && (data.status == 'draft' || data.status == 'submitted' || data.status == 'pending_review' || data.status == 'approved' || data.status == 'rejected')
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    function isValidDocument(data) {
-      return data.keys().hasAll(['id', 'loanId', 'name', 'type', 'url', 'status', 'uploadedAt'])
-        && data.keys().size() <= 10
-        && data.id is string && data.id.size() <= 128
-        && data.loanId is string && data.loanId.size() <= 128
-        && data.name is string && data.name.size() <= 256
-        && data.type is string && data.type.size() <= 100
-        && data.url is string && data.url.size() <= 2048
-        && data.status is string && (data.status == 'pending' || data.status == 'verified' || data.status == 'rejected')
-        && data.uploadedAt is string && data.uploadedAt.size() <= 50;
-    }
-
-    function isValidNotification(data) {
-      return data.keys().hasAll(['id', 'userId', 'message', 'type', 'read', 'createdAt'])
-        && data.keys().size() <= 8
-        && data.id is string && data.id.size() <= 128
-        && data.userId is string && data.userId.size() <= 128
-        && data.message is string && data.message.size() <= 1000
-        && data.type is string && (data.type == 'milestone' || data.type == 'alert' || data.type == 'info')
-        && data.read is bool
-        && data.createdAt is string && data.createdAt.size() <= 50;
-    }
-
-    function isValidLenderRating(data) {
-      return data.keys().hasAll(['lenderName', 'userId', 'loanId', 'rating', 'createdAt'])
-        && data.keys().size() <= 7
-        && data.lenderName is string && data.lenderName.size() <= 256
-        && data.userId is string && data.userId.size() <= 128
-        && data.loanId is string && data.loanId.size() <= 128
-        && data.rating is number && data.rating >= 1 && data.rating <= 5
-        && data.createdAt is timestamp;
-    }
-
-    function isValidBank(data) {
-      return data.keys().hasAll(['name', 'rate', 'processingTime', 'rating', 'score'])
-        && data.keys().size() <= 8
-        && data.name is string && data.name.size() <= 100
-        && data.rate is string && data.rate.size() <= 20
-        && data.processingTime is string && data.processingTime.size() <= 100
-        && data.rating is number && data.rating >= 0 && data.rating <= 5
-        && data.score is number && data.score >= 0 && data.score <= 100;
-    }
-
-    // Public lead ingestion is handled by the server API, not direct Firestore writes.
-    function isValidLead(data) {
-      return data.keys().hasAll([
-          'userId', 'leadId', 'product', 'loanAmount', 'propertyValue',
-          'tenureYears', 'city', 'fullName', 'mobile', 'email',
-          'employmentType', 'monthlyIncome', 'existingEmi', 'consent',
-          'lifecycleStage', 'intentSignals', 'profileCompleteness',
-          'createdAt', 'updatedAt'
-        ])
-        && data.keys().size() <= 24
-        && data.userId is string && data.userId.size() <= 128
-        && data.leadId is string && data.leadId.size() <= 64
-        && data.product is string && data.product.size() <= 100
-        && data.loanAmount is number && data.loanAmount >= 0 && data.loanAmount <= 1000000000
-        && data.propertyValue is number && data.propertyValue >= 0 && data.propertyValue <= 5000000000
-        && data.tenureYears is number && data.tenureYears >= 1 && data.tenureYears <= 40
-        && data.city is string && data.city.size() <= 100
-        && data.fullName is string && data.fullName.size() <= 200
-        && data.mobile is string && data.mobile.size() <= 20
-        && data.email is string && data.email.size() <= 256
-        && data.employmentType is string && data.employmentType.size() <= 50
-        && data.monthlyIncome is number && data.monthlyIncome >= 0 && data.monthlyIncome <= 100000000
-        && data.existingEmi is number && data.existingEmi >= 0 && data.existingEmi <= 100000000
-        && data.consent is map
-        && data.lifecycleStage is string
-        && data.intentSignals is list && data.intentSignals.size() <= 10
-        && data.profileCompleteness is number && data.profileCompleteness >= 0 && data.profileCompleteness <= 100
-        && data.createdAt is string && data.createdAt.size() <= 50
-        && data.updatedAt is string && data.updatedAt.size() <= 50;
-    }
-
-    function isValidMarketCampaign(data) {
-      return data.keys().hasAll(['lenderName', 'campaignTitle', 'channel', 'statedRate', 'scrapedAt', 'status'])
-        && data.keys().size() <= 16
-        && data.lenderName is string && data.lenderName.size() <= 200
-        && data.campaignTitle is string && data.campaignTitle.size() <= 256
-        && data.channel is string && data.channel.size() <= 100
-        && data.statedRate is string && data.statedRate.size() <= 100
-        && data.scrapedAt is string && data.scrapedAt.size() <= 80
-        && data.status is string && data.status.size() <= 50;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
+    match /{document=**} { allow read, write: if false; }
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isStaff());
-      allow list: if isStaff();
-      allow create: if isSignedIn()
-        && isValidId(userId)
-        && isValidUser(request.resource.data)
-        && request.resource.data.id == userId
-        && (
-          isStaff() ||
-          (request.auth.uid == userId && request.resource.data.role == 'client')
-        );
-      allow update: if isStaff()
-        || (
-          isSignedIn()
-          && request.auth.uid == userId
-          && isValidUser(request.resource.data)
-          && request.resource.data.id == userId
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.email == resource.data.email
-          && request.resource.data.createdAt == resource.data.createdAt
-        );
-      allow delete: if isAdmin();
-
-      match /notifications/{notifId} {
-        allow get, list: if isSignedIn() && (request.auth.uid == userId || isStaff());
-        allow create: if isSignedIn()
-          && isValidId(userId)
-          && isValidId(notifId)
-          && isValidNotification(request.resource.data)
-          && request.resource.data.userId == userId
-          && (request.auth.uid == userId || isStaff());
-        allow update: if isStaff()
-          || (
-            isSignedIn()
-            && request.auth.uid == userId
-            && isValidNotification(request.resource.data)
-            && request.resource.data.userId == userId
-          );
-        allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      }
+      allow get: if isSignedIn() && (request.auth.uid == userId || isStaff()); allow list: if isStaff();
+      allow create: if isSignedIn() && isValidId(userId) && isValidUser(request.resource.data) && request.resource.data.id == userId && (isStaff() || (request.auth.uid == userId && request.resource.data.role == 'client'));
+      allow update: if isStaff() || (isSignedIn() && request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.id == userId && request.resource.data.role == resource.data.role && request.resource.data.email == resource.data.email && request.resource.data.createdAt == resource.data.createdAt); allow delete: if isAdmin();
+      match /notifications/{notifId} { allow get, list: if isSignedIn() && (request.auth.uid == userId || isStaff()); allow create: if isSignedIn() && isValidId(userId) && isValidId(notifId) && isValidNotification(request.resource.data) && request.resource.data.userId == userId && (request.auth.uid == userId || isStaff()); allow update: if isStaff() || (isSignedIn() && request.auth.uid == userId && isValidNotification(request.resource.data) && request.resource.data.userId == userId); allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId); }
     }
-
     match /loans/{loanId} {
-      allow get: if isSignedIn() && (
-        isStaff() ||
-        (resource.data.userId == request.auth.uid)
-      );
-      allow list: if isStaff() || (
-        isSignedIn() &&
-        resource.data.userId == request.auth.uid
-      );
-      allow create: if isSignedIn()
-        && isValidId(loanId)
-        && isValidLoan(request.resource.data)
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status in ['draft', 'submitted'];
-      allow update: if isStaff()
-        || (
-          isSignedIn()
-          && resource.data.userId == request.auth.uid
-          && request.resource.data.userId == resource.data.userId
-          && isValidLoan(request.resource.data)
-          && (
-            request.resource.data.status == resource.data.status
-            || request.resource.data.status in ['draft', 'submitted', 'pending_review']
-          )
-        );
-      allow delete: if isAdmin();
-
-      match /documents/{docId} {
-        allow get, list: if isSignedIn() && (
-          isStaff() ||
-          get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid
-        );
-        allow create: if isSignedIn()
-          && isValidId(loanId)
-          && isValidId(docId)
-          && isValidDocument(request.resource.data)
-          && request.resource.data.loanId == loanId
-          && (
-            isStaff() ||
-            get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid
-          );
-        allow update: if isStaff()
-          || (
-            isSignedIn()
-            && request.resource.data.loanId == resource.data.loanId
-            && isValidDocument(request.resource.data)
-            && get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid
-          );
-        allow delete: if isAdmin();
+      allow get: if isSignedIn() && (isStaff() || resource.data.userId == request.auth.uid); allow list: if isStaff() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(loanId) && isValidLoan(request.resource.data) && request.resource.data.userId == request.auth.uid && request.resource.data.status in ['draft','submitted'];
+      allow update: if isStaff() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId && isValidLoan(request.resource.data) && (request.resource.data.status == resource.data.status || request.resource.data.status in ['draft','submitted','pending_review'])); allow delete: if isAdmin();
+      match /documents/{docId} { allow get, list: if isSignedIn() && (isStaff() || get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid); allow create: if isSignedIn() && isValidId(loanId) && isValidId(docId) && isValidDocument(request.resource.data) && request.resource.data.loanId == loanId && (isStaff() || get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid); allow update: if isStaff() || (isSignedIn() && request.resource.data.loanId == resource.data.loanId && isValidDocument(request.resource.data) && get(/databases/$(database)/documents/loans/$(loanId)).data.userId == request.auth.uid); allow delete: if isAdmin(); }
+    }
+    match /lenderRatings/{ratingId} { allow get, list: if isSignedIn(); allow create: if isSignedIn() && isValidId(ratingId) && isValidLenderRating(request.resource.data) && request.resource.data.userId == request.auth.uid; allow update, delete: if isAdmin(); }
+    match /banks/{bankId} { allow get, list: if true; allow create, update, delete: if isAdmin() && isValidId(bankId) && isValidBank(request.resource.data); }
+    match /leads/{leadId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isStaff()); allow list: if isStaff();
+      allow create: if isSignedIn() && isValidId(leadId) && isValidLead(request.resource.data) && request.resource.data.leadId == leadId && request.resource.data.userId == request.auth.uid;
+      allow update: if isStaff() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId && isValidLead(request.resource.data)); allow delete: if isAdmin();
+      match /events/{eventId} {
+        allow get, list: if isSignedIn() && (isStaff() || get(/databases/$(database)/documents/leads/$(leadId)).data.userId == request.auth.uid);
+        allow create: if isSignedIn() && isValidId(eventId) && isValidLeadEvent(request.resource.data) && request.resource.data.eventId == eventId && request.resource.data.leadId == leadId && (isStaff() || (request.resource.data.userId == request.auth.uid && request.resource.data.actor == 'customer'));
+        allow update, delete: if isAdmin();
       }
     }
-
-    match /lenderRatings/{ratingId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn()
-        && isValidId(ratingId)
-        && isValidLenderRating(request.resource.data)
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
-
-    match /banks/{bankId} {
-      // Lender comparison data is public; mutations remain admin-only.
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin()
-        && isValidId(bankId)
-        && isValidBank(request.resource.data);
-    }
-
-    match /leads/{leadId} {
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isStaff());
-      allow list: if isStaff();
-      allow create: if isSignedIn()
-        && isValidId(leadId)
-        && isValidLead(request.resource.data)
-        && request.resource.data.leadId == leadId
-        && request.resource.data.userId == request.auth.uid;
-      allow update: if isStaff()
-        || (isSignedIn()
-          && resource.data.userId == request.auth.uid
-          && request.resource.data.userId == resource.data.userId
-          && isValidLead(request.resource.data));
-      allow delete: if isAdmin();
-    }
-
-    match /MarketCampaigns/{campaignId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isAdmin()
-        && isValidId(campaignId)
-        && isValidMarketCampaign(request.resource.data);
-      allow delete: if isAdmin();
-    }
-
-    match /config/{configId} {
-      allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
-    }
+    match /MarketCampaigns/{campaignId} { allow get, list: if isSignedIn(); allow create, update: if isAdmin() && isValidId(campaignId) && isValidMarketCampaign(request.resource.data); allow delete: if isAdmin(); }
+    match /config/{configId} { allow get: if isSignedIn(); allow list: if isAdmin(); allow create, update: if isAdmin(); allow delete: if isAdmin(); }
   }
 }
