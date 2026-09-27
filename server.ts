@@ -459,7 +459,7 @@ async function startServer() {
   });
 
   // Secure Document Upload Endpoint (AES-256-CBC Encrypted Storage)
-  app.post("/api/documents/upload", docLimiter, (req, res, next) => {
+  app.post("/api/documents/upload", requireInternalJobKey, docLimiter, (req, res, next) => {
     upload.single("document")(req, res, (err) => {
       if (err) {
         return res.status(400).json({ error: "File upload rejected", details: err.message });
@@ -556,7 +556,7 @@ async function startServer() {
   });
 
   // List Secure Document Metadata API
-  app.get("/api/documents/list", docLimiter, (req, res) => {
+  app.get("/api/documents/list", requireInternalJobKey, docLimiter, (req, res) => {
     try {
       let metadataList = [];
       if (fs.existsSync(METADATA_FILE)) {
@@ -581,7 +581,7 @@ async function startServer() {
   });
 
   // Secure Decrypt & Stream Download Endpoint with Path Traversal Protection
-  app.get("/api/documents/download/:id", docLimiter, (req, res) => {
+  app.get("/api/documents/download/:id", requireInternalJobKey, docLimiter, (req, res) => {
     try {
       const { id } = req.params;
 
