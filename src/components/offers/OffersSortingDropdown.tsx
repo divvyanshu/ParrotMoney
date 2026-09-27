@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowUpDown, 
   Percent, 
-  Sparkles, 
   Clock, 
   Check, 
   ChevronDown,
-  Coins
+  Coins,
+  List
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -24,17 +24,17 @@ export interface SortOptionItem {
 export const SORT_OPTIONS: SortOptionItem[] = [
   {
     id: 'highest_match',
-    label: 'Highest Match Score',
-    shortLabel: 'Best Match',
-    description: 'Optimized algorithmic eligibility & approval odds',
-    icon: Sparkles,
-    badge: 'Fit'
+    label: 'Default order',
+    shortLabel: 'Default',
+    description: 'Keeps the maintained lender dataset order; no hidden ranking score',
+    icon: List,
+    badge: 'Source'
   },
   {
     id: 'lowest_rate',
     label: 'Lowest Interest Rate',
     shortLabel: 'Lowest Rate',
-    description: 'Cheapest monthly EMI & lifetime interest cost',
+    description: 'Sort by the lowest displayed lender rate; EMI depends on your loan assumptions',
     icon: Percent,
     badge: 'ROI'
   },
@@ -42,7 +42,7 @@ export const SORT_OPTIONS: SortOptionItem[] = [
     id: 'fastest_time',
     label: 'Fastest Processing Time',
     shortLabel: 'Fastest TAT',
-    description: 'Quickest sanction & disbursal turnaround time',
+    description: 'Available when lender-supplied processing-time data is present',
     icon: Clock,
     badge: 'Speed'
   },
@@ -50,7 +50,7 @@ export const SORT_OPTIONS: SortOptionItem[] = [
     id: 'lowest_fee',
     label: 'Lowest Processing Fee',
     shortLabel: 'Low Fees',
-    description: 'Zero processing fee campaigns & lowest cap charges',
+    description: 'Sort by the lowest disclosed percentage fee where available',
     icon: Coins,
     badge: 'Fee'
   }
@@ -118,7 +118,7 @@ export const OffersSortingDropdown: React.FC<OffersSortingDropdownProps> = ({
 
         <div className="flex flex-col text-left">
           <span className="text-[9px] uppercase tracking-wider text-natural-muted font-bold leading-none">
-            Sort Offers By
+            Sort comparison by
           </span>
           <span className="text-xs font-black text-natural-sage mt-0.5 whitespace-nowrap">
             {selectedOption.label}
@@ -147,11 +147,11 @@ export const OffersSortingDropdown: React.FC<OffersSortingDropdownProps> = ({
           >
             <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Sort Preferences
+                Comparison order
               </span>
               {totalOffersCount !== undefined && (
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  {totalOffersCount} Offers Available
+                  {totalOffersCount} lenders available
                 </span>
               )}
             </div>
