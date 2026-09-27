@@ -35,6 +35,13 @@ export function deriveIntentStage(completeness: number, signals: string[]): Lead
   return 'new';
 }
 
+export function getLeadStageLabel(stage: LeadLifecycleStage): string {
+  return {
+    new: 'New', engaged: 'Engaged', profile_complete: 'Profile complete', comparison_active: 'Comparison active',
+    application_intent: 'Application intent', application_started: 'Application started'
+  }[stage];
+}
+
 type LeadDraft = Omit<LeadProfile, 'leadId' | 'createdAt' | 'updatedAt' | 'source' | 'lifecycleStage' | 'intentSignals' | 'profileCompleteness' | 'comparisonContext'> & { signals?: string[] };
 
 export function buildLeadProfile(input: LeadDraft): LeadProfile {
