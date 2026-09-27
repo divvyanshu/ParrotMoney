@@ -23,8 +23,6 @@ export interface EnrichedLenderOffer {
   processingTime: string;
   processingFee: string;
   processingFeeCaps: string;
-  rating: number;
-  totalRatings: number;
   score: number;
   finalScore: number;
   probability: 'Very High' | 'High' | 'Moderate' | 'Low';
@@ -122,20 +120,6 @@ export function parseLoanLimits(minText: string, maxText: string): { min: number
   return { min, max };
 }
 
-// Parse processing time benchmark based on category and lender profile
-export function estimateProcessingTime(category: string, name: string): string {
-  const n = name.toLowerCase();
-  const c = category.toLowerCase();
-  if (n.includes('bajaj') || n.includes('icici') || n.includes('tata capital')) return '3-5 Days';
-  if (n.includes('hdfc') || n.includes('axis') || n.includes('kotak') || n.includes('idfc')) return '5-7 Days';
-  if (c.includes('small finance') || c.includes('sfb')) return '5-8 Days';
-  if (c.includes('affordable') || n.includes('aadhar') || n.includes('aavas') || n.includes('home first')) return '6-9 Days';
-  if (c.includes('housing finance') || c.includes('hfc')) return '7-10 Days';
-  if (n.includes('sbi') || n.includes('state bank') || n.includes('bank of baroda')) return '10-14 Days';
-  if (c.includes('public') || c.includes('psu')) return '12-18 Days';
-  return '7-12 Days';
-}
-
 // Generate intelligent feature tags from guideline data
 export function extractLenderFeatures(
   lender: HomeLoanGuideline | LAPGuideline,
@@ -186,23 +170,6 @@ export function extractLenderFeatures(
   }
 
   return Array.from(new Set(feats)).slice(0, 4);
-}
-
-// Generate benchmark customer satisfaction rating
-export function getLenderRating(name: string, category: string): { rating: number; totalRatings: number } {
-  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const totalRatings = 45 + (hash % 250);
-  let baseRating = 4.4;
-  const n = name.toLowerCase();
-  if (n.includes('sbi') || n.includes('hdfc') || n.includes('icici')) baseRating = 4.8;
-  else if (n.includes('axis') || n.includes('kotak') || n.includes('bajaj') || n.includes('baroda')) baseRating = 4.7;
-  else if (n.includes('pnb') || n.includes('canara') || n.includes('idfc') || n.includes('tata capital')) baseRating = 4.6;
-  else if (category.includes('PSU')) baseRating = 4.5;
-  else baseRating = 4.3 + ((hash % 5) * 0.1);
-  return {
-    rating: parseFloat(baseRating.toFixed(1)),
-    totalRatings
-  };
 }
 
 // Export list of all 43+ lender names directly derived from datasets
@@ -329,18 +296,18 @@ export function compute43LenderRecommendations(
     if (occupation === 'Salaried') {
       if (categoryGroup === 'PSU Banks') {
         matchScore += 8;
-        matchReasons.push('Lowest cost of credit for salaried professionals with high sovereign security.');
+        matchReasons.push('Applicant occupation aligns with this lender category.');
       } else if (categoryGroup === 'Private Banks') {
         matchScore += 7;
-        matchReasons.push('Streamlined digital documentation and fast-track sanction.');
+        matchReasons.push('Applicant occupation aligns with this lender category.');
       }
     } else { // Business / Self-Employed
       if (categoryGroup === 'HFCs & NBFCs') {
         matchScore += 10;
-        matchReasons.push('Specialized underwriting policies accommodating diverse business balance sheets.');
+        matchReasons.push('Lender category may support this applicant profile; confirm criteria with the lender.');
       } else if (categoryGroup === 'Small Finance Banks') {
         matchScore += 8;
-        matchReasons.push('Flexible banking surrogate and cash flow assessment criteria.');
+        matchReasons.push('Lender category may support this applicant profile; confirm criteria with the lender.');
       } else if (categoryGroup === 'PSU Banks') {
         matchScore -= 6;
         cautionPoints.push('Strict 3-year audited ITR and vintage requirements for self-employed applicants.');
@@ -365,7 +332,7 @@ export function compute43LenderRecommendations(
     // CIBIL Evaluation
     if (cibilVal >= 780) {
       matchScore += 6;
-      matchReasons.push('Tier-1 CIBIL score unlocks prime tier lowest lending rate card.');
+      matchReasons.push('Credit profile is above the configured comparison threshold.');
     } else if (cibilVal < algorithmParams.cibilThreshold) {
       if (categoryGroup === 'HFCs & NBFCs' && (category.includes('Affordable') || shortName.includes('Aadhar') || shortName.includes('Aavas') || shortName.includes('Home First'))) {
         matchScore += 4; // Affordable HFCs specialize in credit-challenged applicants
@@ -390,7 +357,7 @@ export function compute43LenderRecommendations(
       cautionPoints.push(`Debt-to-income (FOIR) ratio exceeds banking guideline of ${algorithmParams.maxFoirRatio}%.`);
     } else {
       matchScore += 4;
-      matchReasons.push('Comfortable debt-servicing buffer within institutional FOIR thresholds.');
+      matchReasons.push('Estimated EMI is within the configured affordability threshold.');
     }
 
     // Age at Maturity Check
@@ -418,7 +385,7 @@ export function compute43LenderRecommendations(
       cautionPoints.push(`Requested amount exceeds institutional ceiling (${maxLoanStr}).`);
     } else if (loanAmt >= 10000000 && (categoryGroup === 'Private Banks' || shortName.includes('SBI'))) {
       matchScore += 5; // HNI priority desk
-      matchReasons.push('Priority relationship manager assigned for high-value loan ticket.');
+      matchReasons.push('Requested loan amount falls within the dataset range.');
     }
 
     // LTV Check
@@ -427,12 +394,7 @@ export function compute43LenderRecommendations(
       cautionPoints.push(`Requested LTV (${calculatedLtv.toFixed(0)}%) exceeds institutional limit.`);
     }
 
-    // Promotional scheme bonus
-    const promoText = lenderRecord['Current Schemes & Promotional Offers'] || '';
-    if (promoText.toLowerCase().includes('festive') || promoText.toLowerCase().includes('waiver')) {
-      matchScore += 3;
-      matchReasons.push('Active campaign waiver on standard processing and documentation charges.');
-    }
+    // Promotional copy does not alter applicant fit.
 
     // Clamp score safely
     const finalScore = Math.min(99, Math.max(30, Math.round(matchScore)));
@@ -451,8 +413,6 @@ export function compute43LenderRecommendations(
       rawLenderName.toLowerCase().includes('sbi') ||
       rawLenderName.toLowerCase().includes('baroda');
 
-    const ratingsInfo = getLenderRating(rawLenderName, category);
-
     return {
       id: `lender_${index}_${shortName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
       name: rawLenderName,
@@ -464,11 +424,9 @@ export function compute43LenderRecommendations(
       rawRateRange: rawRoi,
       estEMI,
       features: extractLenderFeatures(lenderRecord, schemeMatch),
-      processingTime: estimateProcessingTime(category, rawLenderName),
+      processingTime: '',
       processingFee: feeRaw,
       processingFeeCaps: feeCap,
-      rating: ratingsInfo.rating,
-      totalRatings: ratingsInfo.totalRatings,
       score: finalScore,
       finalScore,
       probability,
