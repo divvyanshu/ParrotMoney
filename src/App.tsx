@@ -2829,6 +2829,7 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
       if (snapshot.empty) {
         // No synthetic lender feed is seeded. Comparison data must come from a maintained source.
         console.info("No custom lender feed configured; using the maintained comparison dataset.");
+      }
     }, (error) => {
       console.warn("Firestore error listing banks:", error);
       setIsBanksLoading(false);
