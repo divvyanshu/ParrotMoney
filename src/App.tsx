@@ -20,7 +20,7 @@ import {
   Area,
   Legend
 } from 'recharts';
-import { performRiskAssessment, LoanAssessmentResult } from './services/gemini';
+import { LoanAssessmentResult } from './services/gemini';
 import { logLoanToGoogleSheets } from './lib/sheets';
 import { 
   Building2, 
@@ -2652,7 +2652,6 @@ function AuthenticatedApp({ onBackToLanding, initialTab }: { onBackToLanding?: (
   };
   const [loansViewMode, setLoansViewMode] = useState<'list' | 'apply'>('apply');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [aiAssessment, setAiAssessment] = useState<LoanAssessmentResult | null>(null);
 
   const [overdraftSurplus, setOverdraftSurplus] = useState<number>(500000);
   const [isAssessing, setIsAssessing] = useState(false);
