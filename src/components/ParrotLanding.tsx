@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Building2,
-  Check,
   ChevronDown,
   Menu,
   ShieldCheck,
@@ -114,18 +113,26 @@ const navItems = [
   { label: 'FAQ', href: '#faq' },
 ];
 
-const principles = [
+const comparisonUnlocks = [
   {
-    title: 'Transparent comparison',
-    body: 'Rates, estimated EMI, fees and fit notes appear together so the headline rate is never the whole story.',
+    label: 'Indicative lender rows',
+    value: 'Rate + EMI',
+    body: 'View available lender rate ranges, estimated monthly EMI and stated fit notes from the start.',
   },
   {
-    title: 'Data only when needed',
-    body: 'The first comparison uses basic loan assumptions. Personal and financial details come later with consent.',
+    label: 'Total-cost context',
+    value: 'Fees visible',
+    body: 'See processing fee disclosures beside the rate, instead of discovering material costs later.',
   },
   {
-    title: 'No approval theatre',
-    body: 'We do not show guaranteed offers, approval odds or hidden scores. Lender underwriting decides final terms.',
+    label: 'Personal data timing',
+    value: 'After preview',
+    body: 'Share identity, income and contact details only when you want a personalized comparison.',
+  },
+  {
+    label: 'Approval boundary',
+    value: 'Lender decides',
+    body: 'Use ParrotMoney to compare clearly; final eligibility, sanction and disbursement remain with the lender.',
   },
 ];
 
@@ -479,24 +486,28 @@ export function ParrotLanding({
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
-                Why ParrotMoney
-              </p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                Built around decision quality.
-              </h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {principles.map((principle) => (
-                <div key={principle.title} className="rounded-lg border border-slate-200 bg-white p-5">
-                  <Check className="h-5 w-5 text-emerald-700" />
-                  <h3 className="mt-4 font-black text-slate-950">{principle.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{principle.body}</p>
-                </div>
-              ))}
-            </div>
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
+              Before personal details
+            </p>
+            <h2 className="mt-3 max-w-4xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              What you can compare first with ParrotMoney
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+            {comparisonUnlocks.map((item) => (
+              <div key={item.label} className="border-l-2 border-emerald-300 pl-6">
+                <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.18em] text-emerald-700">
+                  {item.label}
+                </p>
+                <h3 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                  {item.value}
+                </h3>
+                <p className="mt-5 max-w-sm text-base leading-7 text-slate-600">
+                  {item.body}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
