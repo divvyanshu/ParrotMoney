@@ -1382,23 +1382,30 @@ const LOAN_CATEGORIES = [
   { id: 'NRI Loan', label: 'NRI Loan', icon: Mountain, color: 'bg-white border border-slate-100 text-slate-600' },
 ];
 
+type LandingRequirement = {
+  product: string;
+  loanAmount: number;
+  propertyValue: number;
+  tenureYears: number;
+};
+
 function LandingView({ 
   onStartQuestionnaire, 
   onCookieSettingsClick,
   onLoginClick
 }: { 
-  onStartQuestionnaire?: (category?: string) => void, 
+  onStartQuestionnaire?: (category?: string, requirement?: LandingRequirement) => void,
   onCookieSettingsClick?: () => void,
   onLoginClick?: (mode?: 'customer' | 'admin') => void
 }) {
   const { user, loginWithGoogle, loginWithEmailOrMobile } = useAuth();
 
-  const handleApply = (category?: string) => {
+  const handleApply = (category?: string, requirement?: LandingRequirement) => {
     if (category) {
       localStorage.setItem('pendingLoanCategory', category);
     }
     if (onStartQuestionnaire) {
-      onStartQuestionnaire(category);
+      onStartQuestionnaire(category, requirement);
     } else {
       loginWithGoogle();
     }
@@ -6045,24 +6052,17 @@ function AppContent() {
   const [showCookieSettings, setShowCookieSettings] = React.useState(false);
   const [showLeadCapture, setShowLeadCapture] = React.useState(false);
   const [pendingLead, setPendingLead] = React.useState<LeadProfile | null>(null);
-  
-  if (loading) return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center space-y-4 bg-natural-bg">
-       <div className="p-4 bg-natural-sage text-white rounded-2xl animate-pulse shadow-lg">
-         <Building2 className="w-10 h-10" />
-       </div>
-       <p className="text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse text-natural-muted">Synchronizing Security Systems</p>
-    </div>
-  );
-
-  const handleStartApp = async (category?: string) => {
+  const [pendingRequirement, setPendingRequirement] = React.useState<LandingRequirement | undefined>(undefined);
+  const handleStartApp = async (category?: string, requirement?: LandingRequirement) => {
     if (category) localStorage.setItem('pendingLoanCategory', category);
+    setPendingRequirement(requirement);
     setShowLeadCapture(true);
   };
 
   const handleLeadComplete = async (profile: LeadProfile) => {
     setPendingLead(profile);
     setShowLeadCapture(false);
+    setPendingRequirement(undefined);
     try {
       await continueAsGuest();
       setInitialAppTab('loans');
@@ -6095,6 +6095,15 @@ function AppContent() {
     };
     void persistLead();
   }, [user, pendingLead]);
+
+  if (loading) return (
+    <div className="h-screen w-screen flex flex-col items-center justify-center space-y-4 bg-natural-bg">
+       <div className="p-4 bg-natural-sage text-white rounded-2xl animate-pulse shadow-lg">
+         <Building2 className="w-10 h-10" />
+       </div>
+       <p className="text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse text-natural-muted">Synchronizing Security Systems</p>
+    </div>
+  );
 
   const handleBackToLanding = () => {
     setViewState('landing');
@@ -6144,8 +6153,12 @@ function AppContent() {
       {showLeadCapture && (
         <LeadCaptureFlow
           initialProduct={localStorage.getItem('pendingLoanCategory') || undefined}
+          initialRequirement={pendingRequirement}
           onComplete={handleLeadComplete}
-          onClose={() => setShowLeadCapture(false)}
+          onClose={() => {
+            setShowLeadCapture(false);
+            setPendingRequirement(undefined);
+          }}
         />
       )}
       <AuthErrorNotification />

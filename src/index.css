@@ -35,6 +35,34 @@
 }
 
 @layer base {
+  html {
+    scrollbar-color: #CBD5E1 #F8FAFC;
+    scrollbar-width: thin;
+  }
+
+  html::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  html::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-track {
+    background: #F8FAFC;
+  }
+
+  html::-webkit-scrollbar-thumb,
+  *::-webkit-scrollbar-thumb {
+    background-color: #CBD5E1;
+    border: 2px solid #F8FAFC;
+    border-radius: 999px;
+  }
+
+  html::-webkit-scrollbar-thumb:hover,
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #94A3B8;
+  }
+
   body {
     @apply font-sans antialiased bg-natural-bg text-natural-text selection:bg-natural-sage selection:text-white;
     text-rendering: optimizeLegibility;
@@ -83,23 +111,6 @@
     }
   }
   
-  .custom-scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
-  }
-  
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
 }
 
 /* Official Google Sign-In button CSS */
@@ -213,7 +224,6 @@
   }
 
   /* Unconstrain scrollable and max-height containers */
-  .custom-scrollbar,
   .overflow-x-auto,
   [class*="max-h-"],
   [class*="overflow-"] {

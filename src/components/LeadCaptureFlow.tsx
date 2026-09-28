@@ -13,6 +13,8 @@ type Draft = {
   creditScore?:number; consent:LeadProfile['consent']; signals?:string[];
 };
 
+type InitialRequirement = Partial<Pick<Draft, 'product' | 'loanAmount' | 'propertyValue' | 'tenureYears'>>;
+
 const initial: Draft = {
   product:'New Home Loan', loanAmount:5000000, propertyValue:7500000, tenureYears:20, city:'Gurugram',
   fullName:'', mobile:'', email:'', age:35, employmentType:'Salaried', monthlyIncome:150000, existingEmi:0,
@@ -23,9 +25,19 @@ function Field({label, children}:{label:string;children:React.ReactNode}) {
   return <label className="block space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>{children}</label>;
 }
 
-export function LeadCaptureFlow({initialProduct,onComplete,onClose}:{initialProduct?:string;onComplete:(profile:LeadProfile)=>Promise<void>|void;onClose:()=>void}) {
-  const [step,setStep]=useState(1);
-  const [draft,setDraft]=useState<Draft>({...initial,product:initialProduct||initial.product});
+export function LeadCaptureFlow({initialProduct,initialRequirement,onComplete,onClose}:{initialProduct?:string;initialRequirement?:InitialRequirement;onComplete:(profile:LeadProfile)=>Promise<void>|void;onClose:()=>void}) {
+  const hasInitialRequirement = Boolean(
+    initialRequirement?.loanAmount &&
+    initialRequirement?.propertyValue &&
+    initialRequirement?.tenureYears
+  );
+  const [step,setStep]=useState(hasInitialRequirement ? 2 : 1);
+  const [draft,setDraft]=useState<Draft>({
+    ...initial,
+    ...initialRequirement,
+    product: initialRequirement?.product || initialProduct || initial.product,
+    signals: hasInitialRequirement ? ['requirement_started', 'indicative_comparison_viewed'] : initial.signals
+  });
   const [saving,setSaving]=useState(false);
   const update=<K extends keyof Draft>(k:K,v:Draft[K])=>setDraft(p=>({...p,[k]:v}));
   const valid=useMemo(()=>{
