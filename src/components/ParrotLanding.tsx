@@ -107,8 +107,7 @@ const DEFAULT_ALGORITHM_PARAMS = {
 
 const navItems = [
   { label: 'Compare', href: '#compare' },
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'Disclosures', href: '#disclosures' },
+  { label: 'Process', href: '#how-it-works' },
   { label: 'FAQ', href: '#faq' },
 ];
 
@@ -129,31 +128,31 @@ const stagger = {
 const faqs = [
   {
     q: 'Does ParrotMoney charge borrowers?',
-    a: 'ParrotMoney does not charge a platform fee for creating a comparison. Lenders may charge processing, legal, valuation or other product fees, which should be reviewed before proceeding.',
+    a: 'ParrotMoney does not charge a platform fee for comparison. Lender processing, legal or valuation fees should be reviewed before proceeding.',
   },
   {
     q: 'Will checking an indicative comparison affect my credit score?',
-    a: 'The basic comparison starts from self-declared inputs. A credit bureau check may happen only during a formal lender process, subject to the lender process and your consent.',
+    a: 'The basic preview uses self-declared inputs. Bureau checks may happen later during a formal lender process, with consent.',
   },
   {
     q: 'Are the offers guaranteed?',
-    a: 'No. Displayed rows are indicative comparisons from available lender data. Final eligibility, pricing, sanction and disbursement remain with the lender.',
+    a: 'No. Rows are indicative. Final pricing, eligibility, sanction and disbursement remain with the lender.',
   },
   {
     q: 'How does ParrotMoney make money?',
-    a: 'ParrotMoney may receive a referral or distribution commission from a lender when a loan is successfully processed. We should not add a hidden markup to your rate.',
+    a: 'ParrotMoney may receive a referral or distribution commission from a lender when a loan is successfully processed.',
   },
   {
     q: 'When is my data shared with a lender?',
-    a: 'Basic comparison inputs stay within the marketplace flow. Selected offer details or personal information should be shared with a lender only after you request follow-up and provide consent.',
+    a: 'Only after you request follow-up or lender handoff and provide consent.',
   },
   {
     q: 'How fresh is the lender data?',
-    a: 'The preview uses the current lender dataset available inside ParrotMoney. Any final lender quote should be verified before acceptance because rates and fees can change.',
+    a: 'The preview uses the current dataset available inside ParrotMoney. Final quotes should be verified because rates and fees can change.',
   },
   {
     q: 'Who approves the loan?',
-    a: 'The selected bank, housing finance company or NBFC approves, sanctions and disburses the loan under its own policies and regulatory obligations.',
+    a: 'The selected bank, housing finance company or NBFC approves, sanctions and disburses the loan.',
   },
 ];
 
@@ -186,6 +185,12 @@ function formatCompactCurrency(value: number) {
   return formatCurrency(value).replace('/-', '');
 }
 
+function formatFitStatus(status: EnrichedLenderOffer['fitStatus']) {
+  if (status === 'Within stated criteria') return 'Within criteria';
+  if (status === 'Review required') return 'Review';
+  return 'Outside criteria';
+}
+
 function RequirementField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-2">
@@ -209,30 +214,30 @@ function PremiumHeroPanel({
   return (
     <motion.div
       variants={reveal}
-      className="relative min-w-0 overflow-hidden rounded-lg border border-emerald-900/10 bg-white/85 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur"
+      className="relative min-w-0 overflow-hidden rounded-lg border border-white/10 bg-[#0d1c17] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.36)]"
     >
-      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent" />
       <motion.div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-emerald-100/70 to-transparent"
-        animate={{ opacity: [0.35, 0.75, 0.35] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent"
+        animate={{ opacity: [0.18, 0.38, 0.18] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <div className="relative flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="relative flex items-start justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-emerald-700">
-            Indicative desk
+          <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-emerald-200">
+            Borrower decision desk
           </p>
-          <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">
-            Transparent lender rows
+          <h2 className="mt-2 text-xl font-black tracking-tight text-white">
+            Cost visibility before contact
           </h2>
         </div>
-        <div className="rounded-md border border-slate-200 bg-[#f8fbf8] px-3 py-2 text-right">
-          <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+        <div className="rounded-md border border-white/10 bg-white/[0.06] px-3 py-2 text-right">
+          <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-white/45">
             LTV
           </p>
-          <p className="mt-1 text-lg font-black tabular-nums text-slate-950">
+          <p className="mt-1 text-lg font-black tabular-nums text-white">
             {formatPercent(ltv)}
           </p>
         </div>
@@ -249,22 +254,22 @@ function PremiumHeroPanel({
             key={offer.id}
             variants={reveal}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="group grid gap-3 rounded-md border border-slate-200 bg-white p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:grid-cols-[1fr_auto]"
+            className="group grid gap-3 rounded-md border border-white/10 bg-white/[0.07] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300/45 hover:bg-white/[0.1] sm:grid-cols-[1fr_auto]"
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[0.65rem] font-black text-white">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-300 text-[0.65rem] font-black text-[#071410]">
                   {index + 1}
                 </span>
-                <p className="font-black text-slate-950">{offer.shortName}</p>
+                <p className="font-black text-white">{offer.shortName}</p>
               </div>
-              <p className="mt-2 text-xs leading-5 text-slate-500">{offer.rawRateRange}</p>
+              <p className="mt-2 text-xs leading-5 text-white/55">{offer.rawRateRange}</p>
             </div>
             <div className="sm:text-right">
-              <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+              <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-white/45">
                 Est. EMI
               </p>
-              <p className="mt-1 text-lg font-black tabular-nums text-emerald-800">
+              <p className="mt-1 text-lg font-black tabular-nums text-emerald-200">
                 {formatCompactCurrency(offer.estEMI)}
               </p>
             </div>
@@ -272,15 +277,12 @@ function PremiumHeroPanel({
         ))}
       </motion.div>
 
-      <div className="relative mt-4 grid gap-3 text-xs text-slate-500 sm:grid-cols-2">
-        <div className="rounded-md bg-[#f4f8f5] p-3">
-          <span className="block font-extrabold text-slate-950">Fees beside rates</span>
-          Processing fees stay visible in the comparison table.
-        </div>
-        <div className="rounded-md bg-[#f4f8f5] p-3">
-          <span className="block font-extrabold text-slate-950">No approval theatre</span>
-          Final sanction remains with the selected lender.
-        </div>
+      <div className="relative mt-4 flex flex-wrap gap-2 text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-white/58">
+        {['Rate', 'EMI', 'Fees', 'Fit'].map((item) => (
+          <span key={item} className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">
+            {item}
+          </span>
+        ))}
       </div>
     </motion.div>
   );
@@ -288,15 +290,15 @@ function PremiumHeroPanel({
 
 function ComparisonTable({ offers }: { offers: EnrichedLenderOffer[] }) {
   return (
-    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-      <table className="min-w-[760px] w-full border-collapse text-left">
+    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+      <table className="min-w-[700px] w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-slate-200 bg-[#f8fbf8] text-[0.68rem] uppercase tracking-[0.14em] text-slate-500">
+          <tr className="border-b border-slate-800 bg-[#0b1613] text-[0.68rem] uppercase tracking-[0.14em] text-white/58">
             <th className="px-4 py-3 font-extrabold">Lender</th>
             <th className="px-4 py-3 font-extrabold">Indicative rate</th>
             <th className="px-4 py-3 font-extrabold">Est. EMI</th>
             <th className="px-4 py-3 font-extrabold">Processing fee</th>
-            <th className="px-4 py-3 font-extrabold">Fit note</th>
+            <th className="px-4 py-3 font-extrabold">Fit</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -310,11 +312,10 @@ function ComparisonTable({ offers }: { offers: EnrichedLenderOffer[] }) {
               className="align-top transition-colors duration-200 hover:bg-emerald-50/35"
             >
               <td className="px-4 py-4">
-                <div className="font-bold text-slate-950">{offer.shortName}</div>
-                <div className="mt-1 text-xs text-slate-500">{offer.categoryGroup}</div>
+                <div className="font-black text-slate-950">{offer.shortName}</div>
               </td>
-              <td className="px-4 py-4 font-semibold text-slate-900">{offer.rawRateRange}</td>
-              <td className="px-4 py-4 font-semibold tabular-nums text-slate-900">
+              <td className="px-4 py-4 font-bold text-slate-900">{offer.rawRateRange}</td>
+              <td className="px-4 py-4 font-black tabular-nums text-slate-950">
                 {formatCompactCurrency(offer.estEMI)}
               </td>
               <td className="max-w-[220px] px-4 py-4 text-sm text-slate-600">
@@ -322,16 +323,13 @@ function ComparisonTable({ offers }: { offers: EnrichedLenderOffer[] }) {
               </td>
               <td className="px-4 py-4">
                 <span className={cn(
-                  'inline-flex rounded-full px-2.5 py-1 text-xs font-bold',
+                  'inline-flex rounded-md px-2.5 py-1 text-xs font-extrabold',
                   offer.fitStatus === 'Within stated criteria' && 'bg-emerald-50 text-emerald-700',
                   offer.fitStatus === 'Review required' && 'bg-amber-50 text-amber-700',
                   offer.fitStatus === 'Outside stated criteria' && 'bg-rose-50 text-rose-700',
                 )}>
-                  {offer.fitStatus}
+                  {formatFitStatus(offer.fitStatus)}
                 </span>
-                <p className="mt-2 max-w-[260px] text-xs leading-relaxed text-slate-500">
-                  {(offer.matchFactors[0] || offer.cautionPoints[0] || 'Review lender terms before proceeding.')}
-                </p>
               </td>
             </motion.tr>
           ))}
@@ -350,7 +348,7 @@ export function ParrotLanding({
 }: SectionProps) {
   const [requirement, setRequirement] = useState<BasicRequirement>(DEFAULT_REQUIREMENT);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(0);
+  const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
@@ -359,7 +357,7 @@ export function ParrotLanding({
       toRecommendationInput(requirement),
       DEFAULT_ALGORITHM_PARAMS,
       'lowest_rate',
-    ).slice(0, 5);
+    ).slice(0, 4);
   }, [requirement]);
 
   const summary = useMemo(() => getLenderComparisonSummary(offers), [offers]);
@@ -376,8 +374,8 @@ export function ParrotLanding({
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#e7f4ea_0,#f7faf7_34%,#ffffff_100%)] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-[#f7faf7]/85 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl">
+    <div className="min-h-screen overflow-x-hidden bg-[#f4f6f2] text-slate-950">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/94 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <a href="#top" className="rounded-md focus-visible:outline-emerald-700">
             <Logo />
@@ -444,35 +442,49 @@ export function ParrotLanding({
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-12 sm:px-6 md:pb-20 md:pt-20 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:px-8"
+          className="relative overflow-hidden bg-[#071410] text-white"
         >
-          <motion.div variants={reveal} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="max-w-4xl">
-            <p className="inline-flex rounded-full border border-emerald-200 bg-white/70 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700 shadow-sm">
-              Home-loan marketplace
-            </p>
-            <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-              Compare home-loan cost before sharing personal details.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              Start with loan amount, property value and tenure. ParrotMoney shows an indicative lender comparison first, then asks for progressive details only when you want a personalized view.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#compare"
-                className="inline-flex items-center justify-center rounded-md bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-[0_18px_40px_rgba(15,23,42,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800"
-              >
-                Start comparison <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-              <a
-                href="#disclosures"
-                className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white/85 px-5 py-3 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-white"
-              >
-                Review disclosures
-              </a>
-            </div>
-          </motion.div>
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-[0.16]"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px)',
+              backgroundSize: '72px 72px',
+            }}
+            animate={{ backgroundPosition: ['0px 0px', '72px 72px'] }}
+            transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#f4f6f2] via-[#f4f6f2]/35 to-transparent" />
+          <div className="relative mx-auto grid max-w-7xl gap-12 px-4 pb-28 pt-12 sm:px-6 md:pb-36 md:pt-20 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:px-8">
+            <motion.div variants={reveal} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="max-w-4xl">
+              <p className="inline-flex rounded-md border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-200 shadow-sm">
+                Private home-loan comparison
+              </p>
+              <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl [font-family:'Space_Grotesk',Inter,sans-serif]">
+                Compare the cost of credit before the sales call.
+              </h1>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-white/68">
+                Four inputs. One indicative lender table. Personal details only when you continue.
+              </p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="#compare"
+                  className="inline-flex items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-bold text-[#071410] shadow-[0_18px_40px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
+                >
+                  Start comparison <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+                <a
+                  href="#disclosures"
+                  className="inline-flex items-center justify-center rounded-md border border-white/18 bg-white/[0.06] px-5 py-3 text-sm font-bold text-white shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/[0.1]"
+                >
+                  Review disclosures
+                </a>
+              </div>
+            </motion.div>
 
-          <PremiumHeroPanel offers={offers} ltv={ltv} />
+            <PremiumHeroPanel offers={offers} ltv={ltv} />
+          </div>
         </motion.section>
 
         <motion.section
@@ -482,33 +494,34 @@ export function ParrotLanding({
           whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="border-y border-slate-200 bg-white/92 backdrop-blur"
+          className="relative z-10 -mt-20 px-4 sm:px-6 lg:px-8"
         >
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <div className="max-w-3xl">
-              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
-                Basic requirement
-              </p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                See the comparison first.
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
-                Four inputs create an indicative table. Personal details, credit information and lender handoff come later with consent.
-              </p>
-            </div>
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_32px_120px_rgba(15,23,42,0.12)]">
+            <div className="grid gap-8 border-b border-slate-200 bg-[#fbfcfa] px-4 py-7 sm:px-6 lg:grid-cols-[0.75fr_1.25fr] lg:px-8">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
+                  Basic requirement
+                </p>
+                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+                  See the comparison first.
+                </h2>
+                <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
+                  Product, amount, property value and tenure. Nothing more to see the first view.
+                </p>
+              </div>
 
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-40px' }}
-              className="mt-8 grid gap-4 rounded-lg border border-slate-200 bg-[#fbfdfb] p-4 shadow-[0_16px_48px_rgba(15,23,42,0.05)] md:grid-cols-2 xl:grid-cols-4"
-            >
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-40px' }}
+                className="grid gap-4 md:grid-cols-2"
+              >
                 <RequirementField label="Product">
                   <select
                     value={requirement.product}
                     onChange={(event) => updateRequirement('product', event.target.value)}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   >
                     {PRODUCTS.map((product) => (
                       <option key={product} value={product}>{product}</option>
@@ -522,7 +535,7 @@ export function ParrotLanding({
                     step={100000}
                     value={requirement.loanAmount}
                     onChange={(event) => updateRequirement('loanAmount', Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   />
                 </RequirementField>
                 <RequirementField label="Property value">
@@ -532,36 +545,37 @@ export function ParrotLanding({
                     step={100000}
                     value={requirement.propertyValue}
                     onChange={(event) => updateRequirement('propertyValue', Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   />
                 </RequirementField>
                 <RequirementField label="Tenure">
                   <select
                     value={requirement.tenureYears}
                     onChange={(event) => updateRequirement('tenureYears', Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   >
                     {[10, 15, 20, 25, 30].map((year) => (
                       <option key={year} value={year}>{year} years</option>
                     ))}
                   </select>
                 </RequirementField>
-            </motion.div>
+              </motion.div>
+            </div>
 
-            <div className="mt-10 min-w-0">
-              <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 px-4 py-7 sm:px-6 lg:px-8">
+              <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-700">
                     Indicative lender preview
                   </p>
                   <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
-                    Rate, EMI and fees in one table
+                    Rate, EMI and fees
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={startPersonalizedFlow}
-                  className="inline-flex items-center justify-center rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(4,120,87,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-800"
+                  className="inline-flex items-center justify-center rounded-md bg-[#0b1613] px-5 py-3 text-sm font-bold text-white shadow-[0_18px_38px_rgba(15,23,42,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#123028]"
                 >
                   Personalize comparison <ArrowRight className="ml-2 h-4 w-4" />
                 </button>
@@ -569,21 +583,21 @@ export function ParrotLanding({
               <ComparisonTable offers={offers} />
 
               <div className="mt-5 grid gap-3 text-xs text-slate-500 sm:grid-cols-3">
-                <div>
-                  <span className="block font-extrabold text-slate-950">{formatPercent(ltv)}</span>
+                <div className="border-t border-slate-200 pt-3">
+                  <span className="block font-black text-slate-950">{formatPercent(ltv)}</span>
                   Indicative loan-to-value
                 </div>
-                <div>
-                  <span className="block font-extrabold text-slate-950">{summary.rateAvailable}/{summary.totalOffers}</span>
+                <div className="border-t border-slate-200 pt-3">
+                  <span className="block font-black text-slate-950">{summary.rateAvailable}/{summary.totalOffers}</span>
                   Rows with rate data
                 </div>
-                <div>
-                  <span className="block font-extrabold text-slate-950">Not an approval</span>
+                <div className="border-t border-slate-200 pt-3">
+                  <span className="block font-black text-slate-950">Not an approval</span>
                   Lender review required
                 </div>
               </div>
               <p className="mt-5 text-xs leading-6 text-slate-500">
-                Preview rows are generated from ParrotMoney's available lender dataset using your basic assumptions. They are not approvals, guarantees or final lender quotes.
+                Indicative only. Final terms stay with the lender.
               </p>
             </div>
           </div>
@@ -596,7 +610,7 @@ export function ParrotLanding({
           whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.55 }}
-          className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"
+          className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"
         >
           <div className="border-b border-slate-200 pb-12">
             <div className="max-w-2xl">
@@ -604,20 +618,25 @@ export function ParrotLanding({
                 How it works
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                From basic requirement to application intent.
+                A shorter path to clarity.
               </h2>
             </div>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {[
-                ['01', 'Enter the basics', 'Choose product, loan amount, property value and tenure before sharing personal data.'],
-                ['02', 'Compare indicative options', 'Review lender rows across rate range, EMI, fees and stated fit notes.'],
-                ['03', 'Personalize and consent', 'Add profile details, authorize contact or lender handoff, then select the lender you want to continue with.'],
+                ['01', 'Enter basics', 'No phone number for the preview.'],
+                ['02', 'Compare table', 'Rate, EMI, fees and fit together.'],
+                ['03', 'Continue with consent', 'Personalize only when ready.'],
               ].map(([step, title, body]) => (
-                <div key={step} className="border-t border-slate-200 pt-5">
+                <motion.div
+                  key={step}
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="border-t border-slate-200 pt-5"
+                >
                   <span className="text-sm font-black text-emerald-700">{step}</span>
                   <h3 className="mt-4 text-xl font-black text-slate-950">{title}</h3>
                   <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -630,27 +649,27 @@ export function ParrotLanding({
           whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.55 }}
-          className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8"
+          className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8"
         >
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="grid gap-8 rounded-lg border border-slate-200 bg-white px-5 py-7 shadow-[0_18px_70px_rgba(15,23,42,0.05)] sm:px-7 lg:grid-cols-[0.75fr_1.25fr]">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
-                Disclosures
+                Guardrails
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                Clear limits, stated upfront.
+                Clear boundaries.
               </h2>
             </div>
-            <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {[
-                ['Marketplace role', 'ParrotMoney helps compare and facilitate. It is not the lender sanctioning your loan.'],
-                ['Indicative numbers', 'Displayed EMI and total cost depend on selected assumptions and source data availability.'],
-                ['Consent-led sharing', 'Selected offer details are shared for lender follow-up only when you request that next step.'],
-                ['Security posture', 'The app keeps existing lead, consent and CRM infrastructure instead of duplicating sensitive flows.'],
+                ['Marketplace', 'ParrotMoney compares; lenders sanction.'],
+                ['Indicative', 'Preview rows are not guaranteed offers.'],
+                ['Consent', 'Data sharing starts after your request.'],
+                ['Freshness', 'Final lender quotes must be verified.'],
               ].map(([title, body]) => (
-                <div key={title} className="border-t border-slate-200 pt-4">
-                  <h3 className="font-black text-slate-950">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+                <div key={title} className="rounded-md border border-slate-200 bg-[#fbfcfa] p-4">
+                  <h3 className="text-sm font-black text-slate-950">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{body}</p>
                 </div>
               ))}
             </div>
@@ -671,7 +690,7 @@ export function ParrotLanding({
               FAQ
             </p>
             <h2 className="mt-3 text-center text-3xl font-black tracking-tight text-slate-950">
-              The questions borrowers should ask.
+              Important, not hidden.
             </h2>
             <div className="mt-10 divide-y divide-slate-200">
               {faqs.map((faq, index) => {
@@ -696,54 +715,57 @@ export function ParrotLanding({
           </div>
         </motion.section>
 
-        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <div className="grid gap-6 border-t border-slate-200 pt-10 md:grid-cols-[1fr_auto] md:items-center">
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-lg bg-[#071410] px-5 py-8 text-white shadow-[0_28px_90px_rgba(15,23,42,0.16)] sm:px-8 sm:py-10">
+            <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent" />
+            <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950">
-                Ready to make the comparison personal?
+              <h2 className="text-3xl font-black tracking-tight text-white">
+                Make it personal when ready.
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                Continue with identity, income basics and consent so ParrotMoney can prepare a saved comparison and lender-selection path.
+              <p className="mt-3 max-w-xl text-sm leading-7 text-white/58">
+                Add details with consent to move from indicative view to lender selection.
               </p>
             </div>
             <button
               type="button"
               onClick={startPersonalizedFlow}
-              className="inline-flex items-center justify-center rounded-md bg-slate-950 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-slate-800"
+              className="inline-flex items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-bold text-[#071410] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
             >
               Continue <ArrowRight className="ml-2 h-4 w-4" />
             </button>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-slate-950 text-white">
+      <footer className="border-t border-slate-200 bg-white text-slate-950">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div>
               <Logo />
-              <p className="mt-4 max-w-xl text-xs leading-6 text-white/50">
-                ParrotMoney is a loan marketplace and facilitator. Comparisons are indicative and based on available data and user assumptions. Final terms, approval and disbursement remain with the selected lender.
+              <p className="mt-4 max-w-xl text-xs leading-6 text-slate-500">
+                Loan marketplace and facilitator. Indicative comparisons only; final terms and approval remain with the selected lender.
               </p>
             </div>
-            <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-[0.16em] text-white/50">
-              <button type="button" onClick={() => setShowPrivacyModal(true)} className="hover:text-white">
+            <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+              <button type="button" onClick={() => setShowPrivacyModal(true)} className="hover:text-slate-950">
                 Privacy
               </button>
-              <button type="button" onClick={() => setShowTermsModal(true)} className="hover:text-white">
+              <button type="button" onClick={() => setShowTermsModal(true)} className="hover:text-slate-950">
                 Terms
               </button>
-              <button type="button" onClick={onCookieSettingsClick || (() => setShowPrivacyModal(true))} className="hover:text-white">
+              <button type="button" onClick={onCookieSettingsClick || (() => setShowPrivacyModal(true))} className="hover:text-slate-950">
                 Cookies
               </button>
               {onLoginClick && (
-                <button type="button" onClick={() => onLoginClick('admin')} className="hover:text-white">
+                <button type="button" onClick={() => onLoginClick('admin')} className="hover:text-slate-950">
                   Admin
                 </button>
               )}
             </div>
           </div>
-          <p className="mt-10 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/30">
+          <p className="mt-10 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-slate-400">
             © 2026 ParrotMoney. All rights reserved.
           </p>
         </div>
