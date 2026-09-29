@@ -190,9 +190,12 @@ async function startServer() {
 
   // Serve high-resolution brand assets dynamically
   app.get(["/logo.png", "/logo-icon.png", "/parrot-money-final.png", "/Untitled - June 05, 2026 at 18.00.04.png"], (req, res) => {
+    const publicLogoPath = path.join(process.cwd(), "public", "logo.png");
     const newLogoPath = path.join(process.cwd(), "Untitled - June 05, 2026 at 18.00.04.png");
     const oldLogoPath = path.join(process.cwd(), "parrot-money-final.png");
-    if (fs.existsSync(newLogoPath)) {
+    if (fs.existsSync(publicLogoPath)) {
+      res.sendFile(publicLogoPath);
+    } else if (fs.existsSync(newLogoPath)) {
       res.sendFile(newLogoPath);
     } else if (fs.existsSync(oldLogoPath)) {
       res.sendFile(oldLogoPath);
