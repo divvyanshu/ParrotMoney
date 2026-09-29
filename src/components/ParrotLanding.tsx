@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
-  Building2,
   ChevronDown,
   Menu,
-  ShieldCheck,
   X,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
@@ -109,31 +107,8 @@ const DEFAULT_ALGORITHM_PARAMS = {
 const navItems = [
   { label: 'Compare', href: '#compare' },
   { label: 'How it works', href: '#how-it-works' },
-  { label: 'Trust', href: '#trust' },
+  { label: 'Disclosures', href: '#disclosures' },
   { label: 'FAQ', href: '#faq' },
-];
-
-const comparisonUnlocks = [
-  {
-    label: 'Indicative lender rows',
-    value: 'Rate + EMI',
-    body: 'View available lender rate ranges, estimated monthly EMI and stated fit notes from the start.',
-  },
-  {
-    label: 'Total-cost context',
-    value: 'Fees visible',
-    body: 'See processing fee disclosures beside the rate, instead of discovering material costs later.',
-  },
-  {
-    label: 'Personal data timing',
-    value: 'After preview',
-    body: 'Share identity, income and contact details only when you want a personalized comparison.',
-  },
-  {
-    label: 'Approval boundary',
-    value: 'Lender decides',
-    body: 'Use ParrotMoney to compare clearly; final eligibility, sanction and disbursement remain with the lender.',
-  },
 ];
 
 const faqs = [
@@ -354,12 +329,12 @@ export function ParrotLanding({
       </header>
 
       <main id="top">
-        <section className="mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-12 sm:px-6 md:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-          <div className="min-w-0 flex flex-col justify-center">
+        <section className="mx-auto max-w-7xl px-4 pb-12 pt-12 sm:px-6 md:pb-16 md:pt-20 lg:px-8">
+          <div className="max-w-4xl">
             <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
               Home-loan marketplace
             </p>
-            <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+            <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
               Compare home-loan cost before sharing personal details.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
@@ -373,47 +348,30 @@ export function ParrotLanding({
                 Start comparison <ArrowRight className="ml-2 h-4 w-4" />
               </a>
               <a
-                href="#trust"
+                href="#disclosures"
                 className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-400"
               >
                 Review disclosures
               </a>
             </div>
           </div>
-
-          <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <ComparisonTable offers={offers.slice(0, 3)} />
-            <div className="mt-3 grid gap-3 text-xs text-slate-500 sm:grid-cols-3">
-              <div className="rounded-md bg-[#eef6f0] p-3">
-                <span className="block font-extrabold text-slate-950">{formatPercent(ltv)}</span>
-                Indicative loan-to-value
-              </div>
-              <div className="rounded-md bg-[#eef6f0] p-3">
-                <span className="block font-extrabold text-slate-950">{summary.rateAvailable}/{summary.totalOffers}</span>
-                Rows with rate data
-              </div>
-              <div className="rounded-md bg-[#eef6f0] p-3">
-                <span className="block font-extrabold text-slate-950">Indicative</span>
-                Lender review required
-              </div>
-            </div>
-          </div>
         </section>
 
         <section id="compare" className="border-y border-slate-200 bg-white">
-          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[360px_1fr] lg:px-8">
-            <div className="min-w-0">
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <div className="max-w-3xl">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
                 Basic requirement
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                See a useful comparison first.
+                See the comparison first.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-600">
-                These inputs create an indicative comparison only. Personal details, credit information and lender handoff come later with explicit consent.
+                Four inputs create an indicative table. Personal details, credit information and lender handoff come later with consent.
               </p>
+            </div>
 
-              <div className="mt-7 space-y-4">
+            <div className="mt-8 grid gap-4 rounded-lg border border-slate-200 bg-[#fbfdfb] p-4 md:grid-cols-2 xl:grid-cols-4">
                 <RequirementField label="Product">
                   <select
                     value={requirement.product}
@@ -456,11 +414,10 @@ export function ParrotLanding({
                     ))}
                   </select>
                 </RequirementField>
-              </div>
             </div>
 
-            <div className="min-w-0">
-              <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div className="mt-10 min-w-0">
+              <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
                 <div>
                   <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
                     Indicative lender preview
@@ -478,46 +435,35 @@ export function ParrotLanding({
                 </button>
               </div>
               <ComparisonTable offers={offers} />
-              <p className="mt-4 text-xs leading-6 text-slate-500">
+
+              <div className="mt-5 grid gap-3 text-xs text-slate-500 sm:grid-cols-3">
+                <div>
+                  <span className="block font-extrabold text-slate-950">{formatPercent(ltv)}</span>
+                  Indicative loan-to-value
+                </div>
+                <div>
+                  <span className="block font-extrabold text-slate-950">{summary.rateAvailable}/{summary.totalOffers}</span>
+                  Rows with rate data
+                </div>
+                <div>
+                  <span className="block font-extrabold text-slate-950">Not an approval</span>
+                  Lender review required
+                </div>
+              </div>
+              <p className="mt-5 text-xs leading-6 text-slate-500">
                 Preview rows are generated from ParrotMoney's available lender dataset using your basic assumptions. They are not approvals, guarantees or final lender quotes.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
-              Before personal details
-            </p>
-            <h2 className="mt-3 max-w-4xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              What you can compare first with ParrotMoney
-            </h2>
-          </div>
-          <div className="mt-12 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-            {comparisonUnlocks.map((item) => (
-              <div key={item.label} className="border-l-2 border-emerald-300 pl-6">
-                <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.18em] text-emerald-700">
-                  {item.label}
-                </p>
-                <h3 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-                  {item.value}
-                </h3>
-                <p className="mt-5 max-w-sm text-base leading-7 text-slate-600">
-                  {item.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="how-it-works" className="bg-slate-950 text-white">
-          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="border-b border-slate-200 pb-12">
             <div className="max-w-2xl">
-              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-300">
+              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
                 How it works
               </p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight">
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
                 From basic requirement to application intent.
               </h2>
             </div>
@@ -527,36 +473,35 @@ export function ParrotLanding({
                 ['02', 'Compare indicative options', 'Review lender rows across rate range, EMI, fees and stated fit notes.'],
                 ['03', 'Personalize and consent', 'Add profile details, authorize contact or lender handoff, then select the lender you want to continue with.'],
               ].map(([step, title, body]) => (
-                <div key={step} className="border-t border-white/20 pt-5">
-                  <span className="text-sm font-black text-emerald-300">{step}</span>
-                  <h3 className="mt-4 text-xl font-black">{title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-white/65">{body}</p>
+                <div key={step} className="border-t border-slate-200 pt-5">
+                  <span className="text-sm font-black text-emerald-700">{step}</span>
+                  <h3 className="mt-4 text-xl font-black text-slate-950">{title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="trust" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <section id="disclosures" className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
-                Trust and disclosures
+                Disclosures
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                Clear limits are part of the product.
+                Clear limits, stated upfront.
               </h2>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
               {[
                 ['Marketplace role', 'ParrotMoney helps compare and facilitate. It is not the lender sanctioning your loan.'],
                 ['Indicative numbers', 'Displayed EMI and total cost depend on selected assumptions and source data availability.'],
                 ['Consent-led sharing', 'Selected offer details are shared for lender follow-up only when you request that next step.'],
                 ['Security posture', 'The app keeps existing lead, consent and CRM infrastructure instead of duplicating sensitive flows.'],
               ].map(([title, body]) => (
-                <div key={title} className="rounded-lg border border-slate-200 bg-white p-5">
-                  <ShieldCheck className="h-5 w-5 text-emerald-700" />
-                  <h3 className="mt-4 font-black text-slate-950">{title}</h3>
+                <div key={title} className="border-t border-slate-200 pt-4">
+                  <h3 className="font-black text-slate-950">{title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
                 </div>
               ))}
@@ -595,11 +540,10 @@ export function ParrotLanding({
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid gap-8 rounded-lg border border-slate-200 bg-[#edf6ef] p-6 sm:p-8 md:grid-cols-[1fr_auto] md:items-center">
+        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="grid gap-6 border-t border-slate-200 pt-10 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <Building2 className="h-7 w-7 text-emerald-800" />
-              <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-950">
+              <h2 className="text-3xl font-black tracking-tight text-slate-950">
                 Ready to make the comparison personal?
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
