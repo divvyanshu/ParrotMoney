@@ -5,6 +5,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn, formatCurrency } from '../lib/utils';
 import { Logo } from './Logo';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
@@ -111,6 +112,20 @@ const navItems = [
   { label: 'FAQ', href: '#faq' },
 ];
 
+const reveal = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const stagger = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
 const faqs = [
   {
     q: 'Does ParrotMoney charge borrowers?',
@@ -182,12 +197,101 @@ function RequirementField({ label, children }: { label: string; children: React.
   );
 }
 
+function PremiumHeroPanel({
+  offers,
+  ltv,
+}: {
+  offers: EnrichedLenderOffer[];
+  ltv: number;
+}) {
+  const previewOffers = offers.slice(0, 3);
+
+  return (
+    <motion.div
+      variants={reveal}
+      className="relative min-w-0 overflow-hidden rounded-lg border border-emerald-900/10 bg-white/85 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur"
+    >
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-emerald-100/70 to-transparent"
+        animate={{ opacity: [0.35, 0.75, 0.35] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      <div className="relative flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-emerald-700">
+            Indicative desk
+          </p>
+          <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+            Transparent lender rows
+          </h2>
+        </div>
+        <div className="rounded-md border border-slate-200 bg-[#f8fbf8] px-3 py-2 text-right">
+          <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+            LTV
+          </p>
+          <p className="mt-1 text-lg font-black tabular-nums text-slate-950">
+            {formatPercent(ltv)}
+          </p>
+        </div>
+      </div>
+
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="visible"
+        className="relative mt-4 space-y-3"
+      >
+        {previewOffers.map((offer, index) => (
+          <motion.div
+            key={offer.id}
+            variants={reveal}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="group grid gap-3 rounded-md border border-slate-200 bg-white p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:grid-cols-[1fr_auto]"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[0.65rem] font-black text-white">
+                  {index + 1}
+                </span>
+                <p className="font-black text-slate-950">{offer.shortName}</p>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{offer.rawRateRange}</p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                Est. EMI
+              </p>
+              <p className="mt-1 text-lg font-black tabular-nums text-emerald-800">
+                {formatCompactCurrency(offer.estEMI)}
+              </p>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      <div className="relative mt-4 grid gap-3 text-xs text-slate-500 sm:grid-cols-2">
+        <div className="rounded-md bg-[#f4f8f5] p-3">
+          <span className="block font-extrabold text-slate-950">Fees beside rates</span>
+          Processing fees stay visible in the comparison table.
+        </div>
+        <div className="rounded-md bg-[#f4f8f5] p-3">
+          <span className="block font-extrabold text-slate-950">No approval theatre</span>
+          Final sanction remains with the selected lender.
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function ComparisonTable({ offers }: { offers: EnrichedLenderOffer[] }) {
   return (
-    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
       <table className="min-w-[760px] w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50/80 text-[0.68rem] uppercase tracking-[0.14em] text-slate-500">
+          <tr className="border-b border-slate-200 bg-[#f8fbf8] text-[0.68rem] uppercase tracking-[0.14em] text-slate-500">
             <th className="px-4 py-3 font-extrabold">Lender</th>
             <th className="px-4 py-3 font-extrabold">Indicative rate</th>
             <th className="px-4 py-3 font-extrabold">Est. EMI</th>
@@ -196,8 +300,15 @@ function ComparisonTable({ offers }: { offers: EnrichedLenderOffer[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {offers.map((offer) => (
-            <tr key={offer.id} className="align-top">
+          {offers.map((offer, index) => (
+            <motion.tr
+              key={offer.id}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.35, delay: index * 0.035 }}
+              className="align-top transition-colors duration-200 hover:bg-emerald-50/35"
+            >
               <td className="px-4 py-4">
                 <div className="font-bold text-slate-950">{offer.shortName}</div>
                 <div className="mt-1 text-xs text-slate-500">{offer.categoryGroup}</div>
@@ -222,7 +333,7 @@ function ComparisonTable({ offers }: { offers: EnrichedLenderOffer[] }) {
                   {(offer.matchFactors[0] || offer.cautionPoints[0] || 'Review lender terms before proceeding.')}
                 </p>
               </td>
-            </tr>
+            </motion.tr>
           ))}
         </tbody>
       </table>
@@ -265,8 +376,8 @@ export function ParrotLanding({
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f7faf7] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-[#f7faf7]/90 backdrop-blur-xl">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#e7f4ea_0,#f7faf7_34%,#ffffff_100%)] text-slate-950">
+      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-[#f7faf7]/85 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <a href="#top" className="rounded-md focus-visible:outline-emerald-700">
             <Logo />
@@ -282,14 +393,14 @@ export function ParrotLanding({
             <button
               type="button"
               onClick={() => onLoginClick?.('customer')}
-              className="rounded-md px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-white hover:text-slate-950"
+              className="rounded-md px-4 py-2 text-sm font-bold text-slate-600 transition-all duration-200 hover:bg-white hover:text-slate-950 hover:shadow-sm"
             >
               Sign in
             </button>
             <button
               type="button"
               onClick={isLoggedIn && onGoToDashboard ? onGoToDashboard : startPersonalizedFlow}
-              className="rounded-md bg-slate-950 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
+              className="rounded-md bg-slate-950 px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-[0_18px_36px_rgba(15,23,42,0.2)]"
             >
               {isLoggedIn ? 'Go to dashboard' : 'Compare now'}
             </button>
@@ -329,9 +440,14 @@ export function ParrotLanding({
       </header>
 
       <main id="top">
-        <section className="mx-auto max-w-7xl px-4 pb-12 pt-12 sm:px-6 md:pb-16 md:pt-20 lg:px-8">
-          <div className="max-w-4xl">
-            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
+        <motion.section
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-12 sm:px-6 md:pb-20 md:pt-20 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:px-8"
+        >
+          <motion.div variants={reveal} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="max-w-4xl">
+            <p className="inline-flex rounded-full border border-emerald-200 bg-white/70 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700 shadow-sm">
               Home-loan marketplace
             </p>
             <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
@@ -343,21 +459,31 @@ export function ParrotLanding({
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#compare"
-                className="inline-flex items-center justify-center rounded-md bg-slate-950 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-slate-800"
+                className="inline-flex items-center justify-center rounded-md bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-[0_18px_40px_rgba(15,23,42,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800"
               >
                 Start comparison <ArrowRight className="ml-2 h-4 w-4" />
               </a>
               <a
                 href="#disclosures"
-                className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-400"
+                className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white/85 px-5 py-3 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-white"
               >
                 Review disclosures
               </a>
             </div>
-          </div>
-        </section>
+          </motion.div>
 
-        <section id="compare" className="border-y border-slate-200 bg-white">
+          <PremiumHeroPanel offers={offers} ltv={ltv} />
+        </motion.section>
+
+        <motion.section
+          id="compare"
+          variants={reveal}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="border-y border-slate-200 bg-white/92 backdrop-blur"
+        >
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
@@ -371,12 +497,18 @@ export function ParrotLanding({
               </p>
             </div>
 
-            <div className="mt-8 grid gap-4 rounded-lg border border-slate-200 bg-[#fbfdfb] p-4 md:grid-cols-2 xl:grid-cols-4">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-40px' }}
+              className="mt-8 grid gap-4 rounded-lg border border-slate-200 bg-[#fbfdfb] p-4 shadow-[0_16px_48px_rgba(15,23,42,0.05)] md:grid-cols-2 xl:grid-cols-4"
+            >
                 <RequirementField label="Product">
                   <select
                     value={requirement.product}
                     onChange={(event) => updateRequirement('product', event.target.value)}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   >
                     {PRODUCTS.map((product) => (
                       <option key={product} value={product}>{product}</option>
@@ -390,7 +522,7 @@ export function ParrotLanding({
                     step={100000}
                     value={requirement.loanAmount}
                     onChange={(event) => updateRequirement('loanAmount', Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   />
                 </RequirementField>
                 <RequirementField label="Property value">
@@ -400,21 +532,21 @@ export function ParrotLanding({
                     step={100000}
                     value={requirement.propertyValue}
                     onChange={(event) => updateRequirement('propertyValue', Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   />
                 </RequirementField>
                 <RequirementField label="Tenure">
                   <select
                     value={requirement.tenureYears}
                     onChange={(event) => updateRequirement('tenureYears', Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-950 shadow-sm outline-none transition-all duration-200 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   >
                     {[10, 15, 20, 25, 30].map((year) => (
                       <option key={year} value={year}>{year} years</option>
                     ))}
                   </select>
                 </RequirementField>
-            </div>
+            </motion.div>
 
             <div className="mt-10 min-w-0">
               <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
@@ -429,7 +561,7 @@ export function ParrotLanding({
                 <button
                   type="button"
                   onClick={startPersonalizedFlow}
-                  className="inline-flex items-center justify-center rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800"
+                  className="inline-flex items-center justify-center rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(4,120,87,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-800"
                 >
                   Personalize comparison <ArrowRight className="ml-2 h-4 w-4" />
                 </button>
@@ -455,9 +587,17 @@ export function ParrotLanding({
               </p>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <motion.section
+          id="how-it-works"
+          variants={reveal}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.55 }}
+          className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"
+        >
           <div className="border-b border-slate-200 pb-12">
             <div className="max-w-2xl">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
@@ -481,9 +621,17 @@ export function ParrotLanding({
               ))}
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section id="disclosures" className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+        <motion.section
+          id="disclosures"
+          variants={reveal}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.55 }}
+          className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8"
+        >
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
@@ -507,9 +655,17 @@ export function ParrotLanding({
               ))}
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section id="faq" className="border-y border-slate-200 bg-white">
+        <motion.section
+          id="faq"
+          variants={reveal}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.55 }}
+          className="border-y border-slate-200 bg-white"
+        >
           <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
             <p className="text-center text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">
               FAQ
@@ -538,7 +694,7 @@ export function ParrotLanding({
               })}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="grid gap-6 border-t border-slate-200 pt-10 md:grid-cols-[1fr_auto] md:items-center">
